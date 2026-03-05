@@ -15,11 +15,13 @@
     <button class="menu-btn" onclick="PlayTo('https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/gnmath3.xml')">gnmath 3</button>
     <button class="menu-btn" onclick="PlayTo('https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/gnmath4.xml')">gnmath 4</button>
     <button class="menu-btn" onclick="PlayTo('https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/slashallga.xml')">all slash game</button>
-    
   </div>
 
   <button id="backBtn" class="back-button" onclick="goBack()" style="display:none;">BACK</button>
-  <button class="fullscreen-button" type="button" onclick="openFullscreen()">FULLSCREEN</button>
+
+  <button id="fsBtn" class="fullscreen-button" type="button" onclick="openFullscreen()" style="display:none;">
+    FULLSCREEN
+  </button>
 
 </div>
 
@@ -156,6 +158,7 @@
 
       document.getElementById("menu").style.display = "none";
       document.getElementById("backBtn").style.display = "block";
+      document.getElementById("fsBtn").style.display = "block";  // SHOW FULLSCREEN BUTTON
     }).catch((err) => {
       console.error('Error:', err);
       alert('Game failed to load.');
@@ -179,6 +182,7 @@
 
     document.getElementById("menu").style.display = "flex";
     document.getElementById("backBtn").style.display = "none";
+    document.getElementById("fsBtn").style.display = "none";  // HIDE FULLSCREEN BUTTON
 
     CURRENT_FILE_URL = null;
   }
