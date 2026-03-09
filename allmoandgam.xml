@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_blank">
+</head>
+<body>
+    <!DOCTYPE html>
+<html>
+<head>
+  <base target="_blank">
+</head>
+<body style="background:#000;">
+<div id="container" style="background:#000; width:100%; height:100%;">
+
+  <iframe id="fr" width="100%" height="100%" frameborder="0" allowfullscreen=""
+          style="display:none; background:#000;"></iframe>
+
+  <div id="menu">
+    <button class="menu-btn" onclick="PlayTo('https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/all.xml')">GAME</button>
+    <button class="menu-btn" onclick="PlayTo('https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/allmovies.xml')">MOVIE</button>
+  </div>
+
+  <button id="backBtn" class="back-button" onclick="goBack()" style="display:none;">BACK</button>
+
+  <button id="fsBtn" class="fullscreen-button" onclick="openFullscreen()" style="display:none;">FULLSCREEN</button>
+
+</div>
+
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
+    background: #000 !important;
+  }
+
+  #menu {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    z-index: 1001;
+  }
+
+  .menu-btn {
+    padding: 35px 70px;              /* BIGGER BUTTON */
+    background: #000;
+    color: #fff;
+    border: 3px solid #4a148c;       /* THICK BORDER */
+    border-radius: 12px;
+    font: bold 36px Arial;           /* BIG TEXT */
+    cursor: pointer;
+    min-width: 350px;                /* SAME WIDTH */
+    text-align: center;
+  }
+  .menu-btn:hover { background: #4a148c; }
+
+  .fullscreen-button, .back-button {
+    padding: 15px 20px;
+    background: #000;
+    color: #fff;
+    border: 3px solid #4a148c;
+    border-radius: 8px;
+    font: bold 18px Arial;
+    cursor: pointer;
+    position: fixed;
+    bottom: 20px;
+    z-index: 1002;
+  }
+
+  .fullscreen-button { right: 20px; }
+  .back-button { left: 20px; }
+
+  .fullscreen-button:hover, .back-button:hover {
+    background: #4a148c;
+  }
+</style>
+
+<script>
+  const DB_NAME = 'CacheDB';
+  const STORE_NAME = 'Files';
+  const CACHE_DURATION = 90 * 24 * 60 * 60 * 1000;
+
+  let CURRENT_URL = null;
+
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, 1);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        db.createObjectStore(STORE_NAME, { keyPath: 'url' });
+      };
+      request.onsuccess = (event) => resolve(event.target.result);
+      request.onerror = (event) => reject(event.target.error);
+    });
+  }
+
+  async function saveToCache(url, content) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put({ url: url, content: content, timestamp: Date.now() });
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Cache error'));
+    });
+  }
+
+  async function getFileFromCache(url) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(url);
+
+      request.onsuccess = async (event) => {
+        const data = event.target.result;
+        if (data && (Date.now() - data.timestamp) < CACHE_DURATION) {
+          resolve(data.content);
+        } else {
+          try {
+            const response = await fetch(url);
+            const text = await response.text();
+            await saveToCache(url, text);
+            resolve(text);
+          } catch (err) {
+            reject(err);
+          }
+        }
+      };
+
+      request.onerror = () => reject(new Error('DB error'));
+    });
+  }
+
+  function PlayTo(url) {
+    CURRENT_URL = url;
+    const iframe = document.getElementById("fr");
+
+    getFileFromCache(url).then((text) => {
+      iframe.style.display = "block";
+      iframe.contentDocument.open();
+      iframe.contentDocument.write(text);
+      iframe.contentDocument.close();
+
+      document.getElementById("menu").style.display = "none";
+      document.getElementById("backBtn").style.display = "block";
+      document.getElementById("fsBtn").style.display = "block";
+    });
+  }
+
+  function goBack() {
+    const iframe = document.getElementById("fr");
+    iframe.style.display = "none";
+    iframe.src = "about:blank";
+
+    document.getElementById("menu").style.display = "flex";
+    document.getElementById("backBtn").style.display = "none";
+    document.getElementById("fsBtn").style.display = "none";
+
+    CURRENT_URL = null;
+  }
+
+  function openFullscreen() {
+    if (!CURRENT_URL) return;
+
+    getFileFromCache(CURRENT_URL).then((text) => {
+      const newWindow = window.open("", "_blank");
+      if (newWindow) {
+        newWindow.document.open();
+        newWindow.document.write(text);
+        newWindow.document.close();
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
+</body>
+</html>
