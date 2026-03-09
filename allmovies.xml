@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_blank">
+</head>
+<body>
+    <html>
+<head>
+  <base target="_blank">
+</head>
+<body>
+
+<div id="movie-container">
+  <button onclick="openMovie(1)">Movie 1</button>
+  <button onclick="openMovie(2)">Movie 2</button>
+  <button onclick="openMovie(3)">Movie 3</button>
+  <button onclick="openMovie(4)">Movie 4</button>
+  <button onclick="openMovie(5)">Movie 5</button>
+  <button onclick="openMovie(6)">Movie 6</button>
+  <button onclick="openMovie(7)">Movie 7</button>
+  <button onclick="openMovie(8)">Movie 8</button>
+</div>
+
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Centered 2×4 grid */
+  #movie-container {
+    display: grid;
+    grid-template-columns: repeat(2, 300px);
+    gap: 25px;
+  }
+
+  /* BIG buttons matching your PLAY button */
+  #movie-container button {
+    padding: 20px 40px;
+    background: #000;
+    color: #fff;
+    border: 3px solid #4a148c;
+    border-radius: 12px;
+    font: bold 24px Arial;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  #movie-container button:hover {
+    background: #4a148c;
+    transform: scale(1.08);
+  }
+</style>
+
+<script>
+  const MOVIE_LINKS = [
+    "https://docs.google.com/document/d/1cFUZ7gTFbneW2VRKkEurBbuiPoZASOE2kzGZHWh1ZXI/edit?tab=t.74sbcpyktnv#bookmark=id.r51sxlvafaql",
+    "https://docs.google.com/presentation/d/1CiZMdBm677M7EIus7gT89WPxwYPzXJQgwmXGv3sLAaw/edit?slide=id.g1b71f8bdb3c_2_313#slide=id.g1b71f8bdb3c_2_313",
+    "https://docs.google.com/presentation/d/1nD8vLEEU5R7dSAaTBhnvnwZIfPNxs5JI5B23J2Ezgzk/edit?usp=sharing",
+    "https://docs.google.com/presentation/d/1YDZCGRJMcIXA6CDnnxEUcNuZuEx-NdUETeeVFulhYDg/edit?slide=id.g2ce541b7098_0_1#slide=id.g2ce541b7098_0_1",
+    "https://docs.google.com/presentation/d/1MKUZLOhfS1PyOtbz-uhfdNqewzDJIqZxBEfMeWPhJpE/edit?slide=id.g2d03a5085ad_0_68#slide=id.g2d03a5085ad_0_68",
+    "https://docs.google.com/presentation/d/1cqMoS7rNvOX77938GusdWNi6mYVPOfETCVsAVW9I9ps/edit?slide=id.p#slide=id.p",
+    "https://docs.google.com/presentation/d/149GpUX0v2xNpwbUTv0Ra1bXSBJ8VImN3yQXMYA9ZhKA/edit?slide=id.g3390e1e779d_159_192#slide=id.g3390e1e779d_159_192",
+    "https://docs.google.com/presentation/d/1jFwTUUOsua3jlRQnmTuePObsg910FsW-6gVFFHoC7MI/edit?slide=id.g34a4e3da8d4_0_5#slide=id.g34a4e3da8d4_0_5"
+  ];
+
+  function openMovie(num) {
+    window.open(MOVIE_LINKS[num - 1], "_blank");
+  }
+</script>
+
+</body>
+</html>
+</body>
+</html>
