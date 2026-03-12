@@ -58,7 +58,6 @@
   }
   .menu-btn:hover { background: #4a148c; }
 
-  /* ✅ EXACT MATCH TO YOUR REFERENCE FILE */
   .fullscreen-button {
     padding: 10px 15px;
     background: #000;
