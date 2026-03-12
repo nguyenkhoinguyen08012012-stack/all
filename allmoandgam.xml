@@ -4,7 +4,7 @@
 <base target="_blank">
 </head>
 <body>
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <base target="_blank">
@@ -46,37 +46,48 @@
   }
 
   .menu-btn {
-    padding: 35px 70px;              /* BIGGER BUTTON */
+    padding: 35px 70px;
     background: #000;
     color: #fff;
-    border: 3px solid #4a148c;       /* THICK BORDER */
+    border: 3px solid #4a148c;
     border-radius: 12px;
-    font: bold 36px Arial;           /* BIG TEXT */
+    font: bold 36px Arial;
     cursor: pointer;
-    min-width: 350px;                /* SAME WIDTH */
+    min-width: 350px;
     text-align: center;
   }
   .menu-btn:hover { background: #4a148c; }
 
-  .fullscreen-button, .back-button {
-    padding: 15px 20px;
+  /* ✅ EXACT MATCH TO YOUR REFERENCE FILE */
+  .fullscreen-button {
+    padding: 10px 15px;
     background: #000;
     color: #fff;
-    border: 3px solid #4a148c;
-    border-radius: 8px;
-    font: bold 18px Arial;
+    border: 2px solid #4a148c;
+    border-radius: 5px;
+    font: bold 14px Arial;
     cursor: pointer;
     position: fixed;
     bottom: 20px;
+    right: 20px;
     z-index: 1002;
   }
+  .fullscreen-button:hover { background: #4a148c; }
 
-  .fullscreen-button { right: 20px; }
-  .back-button { left: 20px; }
-
-  .fullscreen-button:hover, .back-button:hover {
-    background: #4a148c;
+  .back-button {
+    padding: 10px 15px;
+    background: #000;
+    color: #fff;
+    border: 2px solid #4a148c;
+    border-radius: 5px;
+    font: bold 14px Arial;
+    cursor: pointer;
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1002;
   }
+  .back-button:hover { background: #4a148c; }
 </style>
 
 <script>
