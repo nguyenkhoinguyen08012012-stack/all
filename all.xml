@@ -15,6 +15,7 @@
     <button class="menu-btn" onclick="PlayTo('https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/gnmath3.xml')">gnmath 3</button>
     <button class="menu-btn" onclick="PlayTo('https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/gnmath4.xml')">gnmath 4</button>
     <button class="menu-btn" onclick="PlayTo('https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/slashallga.xml')">all slash game</button>
+    <button class="menu-btn" onclick="PlayTo('https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/deltamathall.xml')">all deltamath game</button>
     <button class="menu-btn" onclick="PlayTo('https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/c9c9c9/refs/heads/main/z6/2.xml')">pixel chat</button>
   </div>
 
