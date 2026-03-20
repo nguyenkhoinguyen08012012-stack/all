@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_blank">
+</head>
+<body>
+    <!DOCTYPE html>
+<html>
+<head>
+    <title>DeltaMath</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #2e3244 0%, #36224b 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 80px;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 20px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        .main-content {
+            margin-left: 100px;
+            flex: 1;
+            padding: 20px;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* ⭐ A–Z + 0–9 group buttons */
+        #group-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .group-btn {
+            background: #4a6edb;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .group-btn:hover {
+            background: #6f8ff0;
+        }
+
+        /* ⭐ Multi-column grid */
+        #sections-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 12px;
+            width: 100%;
+        }
+
+        input[type="button"] {
+            background: rgb(89, 134, 218);
+            border: none;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            color: white;
+            text-align: left;
+        }
+
+        input[type="button"]:hover {
+            background: #79aadb;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="sidebar"></div>
+
+<div class="main-content">
+    <h1>DeltaMath</h1>
+
+    <!-- ⭐ A–Z + 0–9 group buttons -->
+    <div id="group-buttons"></div>
+
+    <!-- ⭐ File list -->
+    <div id="sections-container"></div>
+</div>
+
+<script>
+let ALL_FILES = [];
+
+/* ---------------------------
+   FULLSCREEN LOADER
+---------------------------- */
+async function openGameFullscreen(rawURL) {
+    try {
+        const response = await fetch(rawURL);
+        const text = await response.text();
+
+        const win = window.open("", "_blank");
+        win.document.open();
+        win.document.write(text);
+        win.document.close();
+
+    } catch (err) {
+        alert("Failed to load file.");
+        console.error(err);
+    }
+}
+
+/* ---------------------------
+   AUTO-SCAN GITHUB REPO
+---------------------------- */
+async function scanFolder(path = "") {
+    const url = `https://api.github.com/repos/nguyenkhoinguyen08012012-stack/webs/contents/${path}`;
+    const res = await fetch(url);
+    const items = await res.json();
+
+    let out = [];
+
+    for (const item of items) {
+        if (item.type === "file" && item.name.endsWith(".html")) {
+            out.push(item.path);
+        }
+        if (item.type === "dir") {
+            const sub = await scanFolder(item.path);
+            out = out.concat(sub);
+        }
+    }
+
+    return out;
+}
+
+/* ---------------------------
+   RENDER FILE BUTTONS
+---------------------------- */
+function renderFiles(filter = null) {
+    const container = document.getElementById("sections-container");
+    container.innerHTML = "";
+
+    let files = ALL_FILES;
+
+    if (filter === "0-9") {
+        files = files.filter(f => /^[0-9]/.test(f.cleanName));
+    } else if (filter) {
+        files = files.filter(f => f.cleanName.toLowerCase().startsWith(filter.toLowerCase()));
+    }
+
+    files.forEach(file => {
+        const btn = document.createElement("input");
+        btn.type = "button";
+        btn.value = file.cleanName;
+
+        btn.onclick = () => openGameFullscreen(file.rawURL);
+
+        container.appendChild(btn);
+    });
+}
+
+/* ---------------------------
+   CREATE GROUP BUTTONS
+---------------------------- */
+function createGroupButtons() {
+    const groupDiv = document.getElementById("group-buttons");
+
+    // All button
+    const allBtn = document.createElement("button");
+    allBtn.className = "group-btn";
+    allBtn.textContent = "All";
+    allBtn.onclick = () => renderFiles(null);
+    groupDiv.appendChild(allBtn);
+
+    // ⭐ 0–9 button
+    const numBtn = document.createElement("button");
+    numBtn.className = "group-btn";
+    numBtn.textContent = "0–9";
+    numBtn.onclick = () => renderFiles("0-9");
+    groupDiv.appendChild(numBtn);
+
+    // A–Z buttons
+    for (let i = 65; i <= 90; i++) {
+        const letter = String.fromCharCode(i);
+        const btn = document.createElement("button");
+        btn.className = "group-btn";
+        btn.textContent = letter;
+        btn.onclick = () => renderFiles(letter);
+        groupDiv.appendChild(btn);
+    }
+}
+
+/* ---------------------------
+   LOAD EVERYTHING
+---------------------------- */
+async function loadFiles() {
+    const container = document.getElementById("sections-container");
+    container.innerHTML = "<p style='color:white;'>Loading...</p>";
+
+    let files = await scanFolder("");
+
+    files.sort((a, b) => a.localeCompare(b));
+
+    ALL_FILES = files.map(path => {
+        const cleanName = path
+            .replace(".html", "")
+            .replace(/\//g, " / ");
+
+        return {
+            path,
+            cleanName,
+            rawURL: `https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/webs/main/${path}`
+        };
+    });
+
+    createGroupButtons();
+    renderFiles(null);
+}
+
+loadFiles();
+</script>
+
+</body>
+</html>
+</body>
+</html>
