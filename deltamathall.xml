@@ -47,7 +47,6 @@
             margin-bottom: 20px;
         }
 
-        /* ⭐ A–Z + 0–9 group buttons */
         #group-buttons {
             display: flex;
             flex-wrap: wrap;
@@ -71,7 +70,6 @@
             background: #6f8ff0;
         }
 
-        /* ⭐ Multi-column grid */
         #sections-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -104,20 +102,13 @@
 
 <div class="main-content">
     <h1>DeltaMath</h1>
-
-    <!-- ⭐ A–Z + 0–9 group buttons -->
     <div id="group-buttons"></div>
-
-    <!-- ⭐ File list -->
     <div id="sections-container"></div>
 </div>
 
 <script>
 let ALL_FILES = [];
 
-/* ---------------------------
-   FULLSCREEN LOADER
----------------------------- */
 async function openGameFullscreen(rawURL) {
     try {
         const response = await fetch(rawURL);
@@ -134,9 +125,6 @@ async function openGameFullscreen(rawURL) {
     }
 }
 
-/* ---------------------------
-   AUTO-SCAN GITHUB REPO
----------------------------- */
 async function scanFolder(path = "") {
     const url = `https://api.github.com/repos/nguyenkhoinguyen08012012-stack/webs/contents/${path}`;
     const res = await fetch(url);
@@ -157,9 +145,6 @@ async function scanFolder(path = "") {
     return out;
 }
 
-/* ---------------------------
-   RENDER FILE BUTTONS
----------------------------- */
 function renderFiles(filter = null) {
     const container = document.getElementById("sections-container");
     container.innerHTML = "";
@@ -183,27 +168,21 @@ function renderFiles(filter = null) {
     });
 }
 
-/* ---------------------------
-   CREATE GROUP BUTTONS
----------------------------- */
 function createGroupButtons() {
     const groupDiv = document.getElementById("group-buttons");
 
-    // All button
     const allBtn = document.createElement("button");
     allBtn.className = "group-btn";
     allBtn.textContent = "All";
     allBtn.onclick = () => renderFiles(null);
     groupDiv.appendChild(allBtn);
 
-    // ⭐ 0–9 button
     const numBtn = document.createElement("button");
     numBtn.className = "group-btn";
     numBtn.textContent = "0–9";
     numBtn.onclick = () => renderFiles("0-9");
     groupDiv.appendChild(numBtn);
 
-    // A–Z buttons
     for (let i = 65; i <= 90; i++) {
         const letter = String.fromCharCode(i);
         const btn = document.createElement("button");
@@ -214,9 +193,6 @@ function createGroupButtons() {
     }
 }
 
-/* ---------------------------
-   LOAD EVERYTHING
----------------------------- */
 async function loadFiles() {
     const container = document.getElementById("sections-container");
     container.innerHTML = "<p style='color:white;'>Loading...</p>";
