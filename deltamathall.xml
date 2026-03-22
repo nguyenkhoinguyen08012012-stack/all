@@ -1,12 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-<base target="_blank">
-</head>
-<body>
-    <!DOCTYPE html>
-<html>
-<head>
     <title>DeltaMath</title>
     <style>
         body {
@@ -18,25 +12,44 @@
             display: flex;
         }
 
+        /* Sidebar scrolls, but padding is handled inside */
         .sidebar {
             position: fixed;
             left: 0;
             top: 0;
-            width: 80px;
+            width: 100px;
             height: 100vh;
             background: rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(10px);
-            padding: 20px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
             overflow-y: auto;
+            overflow-x: hidden;
             box-shadow: 2px 0 10px rgba(0,0,0,0.3);
             z-index: 1000;
         }
 
+        /* Inner container gets padding so scroll area stays correct */
+        .sidebar-inner {
+            padding: 40px 10px 40px 10px; /* top + bottom spacing */
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.5);
+        }
+
         .main-content {
-            margin-left: 100px;
+            margin-left: 120px;
             flex: 1;
             padding: 20px;
         }
@@ -49,25 +62,30 @@
 
         #group-buttons {
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
-            margin-bottom: 20px;
+            flex-direction: column;
+            gap: 6px;
         }
 
         .group-btn {
             background: #4a6edb;
             color: white;
             border: none;
-            padding: 8px 14px;
+            padding: 8px 0;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
+            width: 100%;
+            transition: 0.2s;
         }
 
-        .group-btn:hover {
+        .group-btn:hover:not(:disabled) {
             background: #6f8ff0;
+        }
+
+        .group-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
         }
 
         #sections-container {
@@ -98,11 +116,14 @@
 
 <body>
 
-<div class="sidebar"></div>
+<div class="sidebar">
+    <div class="sidebar-inner">
+        <div id="group-buttons"></div>
+    </div>
+</div>
 
 <div class="main-content">
     <h1>DeltaMath</h1>
-    <div id="group-buttons"></div>
     <div id="sections-container"></div>
 </div>
 
@@ -193,6 +214,29 @@ function createGroupButtons() {
     }
 }
 
+function disableUnusedButtons() {
+    const letters = new Set();
+    ALL_FILES.forEach(f => letters.add(f.cleanName[0].toUpperCase()));
+
+    const buttons = document.querySelectorAll(".group-btn");
+
+    buttons.forEach(btn => {
+        const label = btn.textContent;
+
+        if (label === "All") return;
+
+        if (label === "0–9") {
+            const hasNumber = [...letters].some(ch => /[0-9]/.test(ch));
+            if (!hasNumber) btn.disabled = true;
+            return;
+        }
+
+        if (!letters.has(label)) {
+            btn.disabled = true;
+        }
+    });
+}
+
 async function loadFiles() {
     const container = document.getElementById("sections-container");
     container.innerHTML = "<p style='color:white;'>Loading...</p>";
@@ -214,13 +258,12 @@ async function loadFiles() {
     });
 
     createGroupButtons();
+    disableUnusedButtons();
     renderFiles(null);
 }
 
 loadFiles();
 </script>
 
-</body>
-</html>
 </body>
 </html>
