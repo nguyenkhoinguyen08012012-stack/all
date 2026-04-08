@@ -90,10 +90,7 @@
 <script>
 
   const GAME_LIST = [
-    { name: "gnmath 1", url: "https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/gnmath1.xml" },
     { name: "gnmath 2", url: "https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/gnmath2.xml" },
-    { name: "gnmath 3", url: "https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/gnmath3.xml" },
-    { name: "gnmath 4", url: "https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/gnmath4.xml" },
     { name: "all slash game", url: "https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/slashallga.xml" },
     { name: "all deltamath game", url: "https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/deltamathall.xml" },
     { name: "pixel chat", url: "https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/c9c9c9/refs/heads/main/z6/2.xml" }
