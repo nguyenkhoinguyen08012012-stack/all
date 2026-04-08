@@ -28,28 +28,23 @@
     background: #000 !important;
   }
 
-  /* FULLY CENTERED MENU */
+  /* PERFECT CENTERING USING FLEXBOX */
   #menu {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    height: 70vh;        /* FIXED */
-    width: 80vw;
+    width: 90vw;
+    max-height: 80vh;
     overflow-y: auto;
-    column-count: 2;
-    column-gap: 40px;
+
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+
     text-align: center;
-    padding-right: 20px;
     z-index: 1001;
-  }
-
-  @media (min-width: 900px) {
-    #menu { column-count: 3; }
-  }
-
-  @media (min-width: 1300px) {
-    #menu { column-count: 4; }
   }
 
   .menu-btn {
@@ -61,8 +56,6 @@
     border-radius: 10px;
     font: bold 24px Arial;
     cursor: pointer;
-    margin-bottom: 20px;
-    display: inline-block;
   }
 
   .menu-btn:hover { background: #4a148c; }
