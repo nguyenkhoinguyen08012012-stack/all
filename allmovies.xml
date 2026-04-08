@@ -19,6 +19,7 @@
   <button onclick="openMovie(6)">Movie 6</button>
   <button onclick="openMovie(7)">Movie 7</button>
   <button onclick="openMovie(8)">Movie 8</button>
+  <button onclick="openMovie(8)">Movie 9</button>
 </div>
 
 <style>
@@ -67,6 +68,7 @@
     "https://docs.google.com/presentation/d/1cqMoS7rNvOX77938GusdWNi6mYVPOfETCVsAVW9I9ps/edit?slide=id.p#slide=id.p",
     "https://docs.google.com/presentation/d/149GpUX0v2xNpwbUTv0Ra1bXSBJ8VImN3yQXMYA9ZhKA/edit?slide=id.g3390e1e779d_159_192#slide=id.g3390e1e779d_159_192",
     "https://docs.google.com/presentation/d/1jFwTUUOsua3jlRQnmTuePObsg910FsW-6gVFFHoC7MI/edit?slide=id.g34a4e3da8d4_0_5#slide=id.g34a4e3da8d4_0_5"
+    "https://docs.google.com/document/d/e/2PACX-1vQCRIb6vx_7d6gZXapcrxkxTQyxKG9PNV2gf-LiEAObxBHMBGtXGc8HZcl0gZgqjKmvgsOs0kwJd7bI/pub"
   ];
 
   function openMovie(num) {
