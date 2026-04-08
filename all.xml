@@ -28,21 +28,21 @@
     background: #000 !important;
   }
 
+  /* FULLY CENTERED MENU */
   #menu {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    height: 70vh
+    height: 70vh;        /* FIXED */
     width: 80vw;
     overflow-y: auto;
-    column-count: 2; 
+    column-count: 2;
     column-gap: 40px;
     text-align: center;
-    padding-right: 20px;     
+    padding-right: 20px;
     z-index: 1001;
   }
-
 
   @media (min-width: 900px) {
     #menu { column-count: 3; }
@@ -53,7 +53,7 @@
   }
 
   .menu-btn {
-    width: 260px;              
+    width: 260px;
     padding: 20px 0;
     background: #000;
     color: #fff;
@@ -62,7 +62,7 @@
     font: bold 24px Arial;
     cursor: pointer;
     margin-bottom: 20px;
-    display: inline-block;     
+    display: inline-block;
   }
 
   .menu-btn:hover { background: #4a148c; }
@@ -95,7 +95,6 @@
     { name: "all deltamath game", url: "https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/all/refs/heads/main/deltamathall.xml" },
     { name: "pixel chat", url: "https://raw.githubusercontent.com/nguyenkhoinguyen08012012-stack/c9c9c9/refs/heads/main/z6/2.xml" }
   ];
-
 
   const DB_NAME = 'GameCacheDB';
   const STORE_NAME = 'GameFiles';
@@ -153,7 +152,6 @@
     });
   }
 
-
   function buildMenu() {
     const menu = document.getElementById("menu");
     menu.innerHTML = "";
@@ -168,7 +166,6 @@
   }
 
   window.onload = buildMenu;
-
 
   function PlayTo(url) {
     CURRENT_FILE_URL = url;
@@ -188,7 +185,6 @@
       alert('Game failed to load.');
     });
   }
-
 
   function goBack() {
     const oldIframe = document.getElementById("fr");
@@ -211,7 +207,6 @@
 
     CURRENT_FILE_URL = null;
   }
-
 
   function openFullscreen() {
     if (!CURRENT_FILE_URL) {
