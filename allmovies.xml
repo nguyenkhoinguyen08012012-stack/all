@@ -1,11 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-<base target="_blank">
-</head>
-<body>
-    <html>
-<head>
   <base target="_blank">
 </head>
 <body>
@@ -19,7 +14,7 @@
   <button onclick="openMovie(6)">Movie 6</button>
   <button onclick="openMovie(7)">Movie 7</button>
   <button onclick="openMovie(8)">Movie 8</button>
-  <button onclick="openMovie(8)">Movie 9</button>
+  <button onclick="openMovie(9)">Movie 9</button>
 </div>
 
 <style>
@@ -33,14 +28,12 @@
     align-items: center;
   }
 
-  /* Centered 2×4 grid */
   #movie-container {
     display: grid;
     grid-template-columns: repeat(2, 300px);
     gap: 25px;
   }
 
-  /* BIG buttons matching your PLAY button */
   #movie-container button {
     padding: 20px 40px;
     background: #000;
@@ -67,7 +60,7 @@
     "https://docs.google.com/presentation/d/1MKUZLOhfS1PyOtbz-uhfdNqewzDJIqZxBEfMeWPhJpE/edit?slide=id.g2d03a5085ad_0_68#slide=id.g2d03a5085ad_0_68",
     "https://docs.google.com/presentation/d/1cqMoS7rNvOX77938GusdWNi6mYVPOfETCVsAVW9I9ps/edit?slide=id.p#slide=id.p",
     "https://docs.google.com/presentation/d/149GpUX0v2xNpwbUTv0Ra1bXSBJ8VImN3yQXMYA9ZhKA/edit?slide=id.g3390e1e779d_159_192#slide=id.g3390e1e779d_159_192",
-    "https://docs.google.com/presentation/d/1jFwTUUOsua3jlRQnmTuePObsg910FsW-6gVFFHoC7MI/edit?slide=id.g34a4e3da8d4_0_5#slide=id.g34a4e3da8d4_0_5"
+    "https://docs.google.com/presentation/d/1jFwTUUOsua3jlRQnmTuePObsg910FsW-6gVFFHoC7MI/edit?slide=id.g34a4e3da8d4_0_5#slide=id.g34a4e3da8d4_0_5",
     "https://docs.google.com/document/d/e/2PACX-1vQCRIb6vx_7d6gZXapcrxkxTQyxKG9PNV2gf-LiEAObxBHMBGtXGc8HZcl0gZgqjKmvgsOs0kwJd7bI/pub"
   ];
 
@@ -76,7 +69,5 @@
   }
 </script>
 
-</body>
-</html>
 </body>
 </html>
