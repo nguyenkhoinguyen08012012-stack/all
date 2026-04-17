@@ -460,7 +460,7 @@ p, a, span, div, summary, label, li, td, th {
     <div class="header-content">
         <div class="logo">
             <img src="https://codehs.com/uploads/84799a0bb8e09668879b73acd5e7abaa" alt="elias Logo" class="logo-img">
-            Story Network GN Math
+            GN Math 1
         </div>
         <div class="search-container">
             <input type="text" id="searchBar" placeholder="Search zones..." oninput="filterZones()">
