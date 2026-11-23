@@ -1,0 +1,2059 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0c12">
+<title>Movie Reader</title>
+<style>
+  :root {
+    --bg: #0a0c12;
+    --panel: #11141d;
+    --panel-2: #171b27;
+    --line: #262c3b;
+    --ink: #edf1fa;
+    --muted: #98a2b9;
+    --accent: #6c8cff;
+    --good: #39c98b;
+    --warn: #f0b354;
+    --bad: #ff6b6b;
+    --shadow: 0 18px 60px rgba(0, 0, 0, .55);
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); }
+  body {
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
+  }
+
+  button, input, select { font: inherit; }
+
+  button {
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--ink);
+    border-radius: 9px;
+    padding: 9px 12px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+  button.good { background: rgba(57, 201, 139, .14); border-color: rgba(57, 201, 139, .45); color: #a8f0cf; }
+  button.active { border-color: var(--accent); background: rgba(108, 140, 255, .16); color: #cdd8ff; }
+  button:disabled { opacity: .5; cursor: default; }
+
+  input, select {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: #0d1018;
+    color: var(--ink);
+    border-radius: 9px;
+    padding: 10px 12px;
+    outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108, 140, 255, .14); }
+
+  .topbar {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 20;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 14px;
+    background: rgba(10, 12, 18, .92);
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(10px);
+  }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 800; letter-spacing: .2px; }
+  .brand-mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, #6c8cff, #9b6cff);
+    color: #fff;
+  }
+  .brand-mark svg { width: 16px; height: 16px; fill: currentColor; }
+  .top-actions { display: flex; gap: 8px; }
+
+  .panel-tab {
+    position: fixed;
+    z-index: 25;
+    top: env(safe-area-inset-top, 0px);
+    left: 0;
+    margin-top: 62px;
+    border-radius: 0 11px 11px 0;
+    border-left: 0;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    padding: 11px 13px;
+  }
+
+  .panel {
+    position: fixed;
+    z-index: 30;
+    top: 54px;
+    bottom: 0;
+    left: 0;
+    width: min(390px, 92vw);
+    padding: 14px;
+    overflow-y: auto;
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    transform: translateX(-102%);
+    transition: transform .22s ease;
+    box-shadow: var(--shadow);
+  }
+  .panel.is-open { transform: translateX(0); }
+
+  .section { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .section:last-child { border-bottom: 0; }
+  .section-title {
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 800;
+    margin: 0 0 9px;
+  }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row > * { min-width: 0; }
+  .row button { flex: 0 0 auto; }
+  .hint { color: var(--muted); font-size: 12px; margin: 7px 0 0; }
+  .mini { font-size: 11px; color: var(--muted); }
+
+  .results { display: grid; gap: 8px; margin-top: 10px; }
+  .result {
+    display: grid;
+    grid-template-columns: 54px 1fr;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+    padding: 8px;
+    background: #0e1119;
+  }
+  .result img {
+    width: 54px; height: 78px; object-fit: cover;
+    border-radius: 7px; background: #1b2030;
+  }
+  .result b { display: block; font-size: 13px; line-height: 1.3; }
+  .result small { color: var(--muted); font-size: 11px; }
+
+  .sources { display: grid; gap: 7px; margin-top: 9px; }
+  .source {
+    display: flex; justify-content: space-between; gap: 8px;
+    width: 100%; text-align: left; font-size: 13px;
+  }
+  .source span:last-child { color: var(--muted); font-size: 11px; }
+
+  main {
+    padding: 78px 14px 24px;
+    max-width: 1500px;
+    margin: auto;
+  }
+
+  #empty {
+    min-height: 62vh;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    color: var(--muted);
+    border: 1px dashed var(--line);
+    border-radius: 16px;
+    padding: 28px;
+  }
+  #empty b { color: var(--ink); }
+
+  .stage-wrap {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: var(--shadow);
+  }
+  #video, #frame {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: calc(100dvh - 130px);
+    border: 0;
+    background: #000;
+  }
+
+  .info-view {
+    max-height: calc(100dvh - 130px);
+    overflow: auto;
+    padding: 18px;
+    background: linear-gradient(180deg, #121724, #0b0d14);
+  }
+  .info-card {
+    display: grid;
+    grid-template-columns: minmax(120px, 190px) 1fr;
+    gap: 18px;
+    max-width: 980px;
+    margin: auto;
+  }
+  .info-cover {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    border-radius: 12px;
+    background: #1b2030;
+    border: 1px solid var(--line);
+  }
+  .info-body h2 { margin: 0 0 4px; font-size: 26px; line-height: 1.15; }
+  .info-meta { margin: 0 0 14px; color: var(--good); font-weight: 700; font-size: 13px; }
+  .info-plot { margin: 0 0 16px; font-size: 15px; line-height: 1.6; }
+  .info-details {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 16px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .025);
+  }
+  .info-details div { display: grid; grid-template-columns: 90px 1fr; gap: 10px; }
+  .info-details dt { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  .info-details dd { margin: 0; font-size: 13px; }
+  .info-link { color: #9fb6ff; font-size: 12px; font-weight: 700; text-decoration: none; }
+  .info-link:hover { text-decoration: underline; }
+  @media (max-width: 700px) {
+    .info-card { grid-template-columns: 1fr; }
+    .info-cover { max-width: 170px; }
+  }
+
+  .hud {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    pointer-events: none;
+  }
+  .hud span {
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .72);
+    border: 1px solid rgba(255, 255, 255, .12);
+    font-size: 12px;
+  }
+
+  #status {
+    position: fixed;
+    z-index: 40;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    max-width: min(92vw, 720px);
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: rgba(17, 20, 29, .96);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    font-size: 12.5px;
+    text-align: center;
+  }
+  #status.status-ok { color: #a8f0cf; border-color: rgba(57, 201, 139, .5); }
+  #status.status-warn { color: #ffdca8; border-color: rgba(240, 179, 84, .5); }
+  #status.status-bad { color: #ffb3b3; border-color: rgba(255, 107, 107, .5); }
+
+  .help-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: none;
+    place-items: center;
+    padding: 16px;
+    background: rgba(3, 5, 9, .78);
+    backdrop-filter: blur(5px);
+  }
+  .help-overlay.show { display: grid; }
+  .help-dialog {
+    width: min(760px, 100%);
+    max-height: min(88dvh, 820px);
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .help-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line);
+  }
+  .help-title { font-size: 19px; font-weight: 800; }
+  .help-subtitle { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .help-close { width: 42px; height: 42px; flex: 0 0 42px; font-size: 26px; line-height: 1; padding: 0; }
+  .help-tabs { display: flex; gap: 6px; padding: 10px 14px 0; border-bottom: 1px solid var(--line); }
+  .help-tab { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .help-content { padding: 14px 16px; overflow-y: auto; }
+  .help-section { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .help-section:last-child { border-bottom: 0; }
+  .help-section h3 { margin: 0 0 7px; font-size: 14px; }
+  .help-section p { margin: 0 0 7px; color: var(--muted); font-size: 13px; }
+  .help-section p:last-child { margin-bottom: 0; }
+  .help-section b { color: var(--ink); }
+  .help-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .help-grid > div { border: 1px solid var(--line); border-radius: 10px; padding: 9px; background: #0e1119; }
+  .help-grid b { font-size: 12.5px; }
+  .help-grid p { margin: 3px 0 0; font-size: 12px; }
+  .help-footer { padding: 12px 16px; border-top: 1px solid var(--line); }
+  .help-footer button { width: 100%; }
+
+  .quick-steps { display: flex; align-items: stretch; gap: 6px; }
+  .quick-step {
+    flex: 1; min-width: 0; display: flex; flex-direction: column;
+    align-items: center; gap: 5px; padding: 12px 8px;
+    border: 1px solid var(--line); border-radius: 13px;
+    background: #0e1119; text-align: center;
+  }
+  .step-icon {
+    width: 38px; height: 38px; display: grid; place-items: center;
+    border-radius: 11px; background: rgba(108, 140, 255, .14); color: #a9bcff;
+  }
+  .step-icon svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .quick-step b { font-size: 13px; }
+  .quick-step small { color: var(--muted); font-size: 11px; line-height: 1.3; }
+  .step-arrow { align-self: center; color: var(--muted); font-size: 17px; }
+  .quick-start { width: 100%; min-height: 46px; margin-top: 12px; font-weight: 800; }
+  .quick-mini { display: flex; gap: 8px; margin-top: 10px; }
+  .quick-mini span {
+    flex: 1; text-align: center; border: 1px solid var(--line);
+    border-radius: 999px; padding: 7px; font-size: 11.5px; color: var(--muted);
+  }
+
+  @media (max-width: 720px) {
+    main { padding-left: 0; padding-right: 0; }
+    .stage-wrap { border-radius: 0; border-left: 0; border-right: 0; }
+    #video, #frame { max-height: none; }
+    .quick-steps { flex-direction: column; }
+    .step-arrow { transform: rotate(90deg); }
+    .quick-step { flex-direction: row; justify-content: flex-start; text-align: left; gap: 10px; }
+    .quick-step .step-icon { flex: 0 0 38px; }
+    .help-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="m10 9 5 3-5 3z" fill="#0a0c12"/></svg></span>
+    <span>Movie Reader</span>
+  </div>
+  <div class="top-actions">
+    <button id="helpBtn" type="button">Help</button>
+  </div>
+</div>
+
+<button id="panelTab" class="panel-tab" type="button" aria-controls="controlPanel" aria-expanded="false">Menu</button>
+
+<aside id="controlPanel" class="panel" aria-hidden="true">
+  <div class="section">
+    <p class="section-title">Find a movie</p>
+    <div class="row">
+      <input id="linkInput" type="text" inputmode="search" spellcheck="false" placeholder="Title or page URL" aria-label="Movie title or page URL">
+      <button id="openBtn" class="primary" type="button">Open / Search</button>
+    </div>
+    <div class="row" style="margin-top:9px">
+      <select id="searchSource" aria-label="Search source">
+        <option value="auto">Auto: Archive.org → 123Movies → 123movieszfree → IMDb</option>
+        <option value="archive">Archive.org (free)</option>
+        <option value="zfree">123movieszfree</option>
+        <option value="ww8">ww8.123moviesfree</option>
+        <option value="imdb">IMDb</option>
+      </select>
+    </div>
+    <p class="hint">Paste a title, a movie/trailer page URL, or a direct MP4/M3U8 link.</p>
+    <div id="linkResults" class="results"></div>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Now playing</p>
+    <div id="movieTitle" class="mini">Nothing selected</div>
+    <div id="movieMeta" class="mini"></div>
+    <div class="row" style="margin-top:9px">
+      <button id="videoOnlyBtn" class="good" type="button">Video only</button>
+      <button id="infoOnlyBtn" type="button">Info text</button>
+    </div>
+    <div id="sources" class="sources"></div>
+    <p class="hint">Info text stays inside the reader. MP4/M3U8 files and Archive.org videos play here directly, with a Google Translate media fallback. Signed 123Movies players now run inside the reader stage.</p>
+    <div class="row" style="margin-top:9px">
+      <button id="refreshBtn" type="button">Refresh sources</button>
+      <button id="clearBtn" type="button">Clear</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Page view</p>
+    <div class="row">
+      <select id="viewMode" aria-label="Page view mode">
+        <option value="tab" selected>Google proxy tab (reliable)</option>
+        <option value="stage">Stage (direct clips)</option>
+      </select>
+      <button id="pageBtn" type="button">Open page</button>
+    </div>
+    <label class="row" style="margin-top:9px">
+      <input id="googleFallback" type="checkbox" checked style="width:auto">
+      <span class="mini">Use Google Translate backup for lookup (viewing always uses it)</span>
+    </label>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Keyboard</p>
+    <p class="hint"><b>/</b> focus search · <b>Enter</b> search · <b>Space</b> play/pause · <b>?</b> help</p>
+  </div>
+</aside>
+
+<main>
+  <div id="empty">
+    <div>
+      <div style="font-size:34px;margin-bottom:8px">🎬</div>
+      <b>Search a title, paste a movie page URL, or paste a direct MP4/M3U8 link.</b>
+      <div style="margin-top:6px;font-size:13px">Pick a result, then choose a trailer or video source.</div>
+    </div>
+  </div>
+
+  <div id="stageWrap" class="stage-wrap" hidden>
+    <div class="hud">
+      <span id="hudTitle">—</span>
+      <span id="hudSource">—</span>
+    </div>
+    <video id="video" controls playsinline preload="metadata" referrerpolicy="no-referrer"></video>
+    <iframe id="frame" title="Movie page" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="no-referrer"></iframe>
+    <div id="infoView" class="info-view" hidden></div>
+  </div>
+</main>
+
+<div id="status" role="status" aria-live="polite">Ready</div>
+
+<div id="helpOverlay" class="help-overlay" aria-hidden="true">
+  <div id="helpDialog" class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="help-header">
+      <div>
+        <div id="helpTitle" class="help-title">How to use Movie Reader</div>
+        <div id="helpSubtitle" class="help-subtitle">Fast setup and easy playback</div>
+      </div>
+      <button id="helpCloseBtn" class="help-close" type="button" aria-label="Close help">×</button>
+    </div>
+    <div class="help-tabs">
+      <button id="quickHelpTab" class="help-tab active" type="button">Quick Start</button>
+      <button id="advancedHelpTab" class="help-tab" type="button">Advanced Guide</button>
+    </div>
+
+    <div id="quickHelpContent" class="help-content">
+      <div class="quick-steps">
+        <div class="quick-step">
+          <span class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></span>
+          <b>1. Search</b>
+          <small>Title or page URL</small>
+        </div>
+        <span class="step-arrow" aria-hidden="true">→</span>
+        <div class="quick-step">
+          <span class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="m10 9 5 3-5 3z"/></svg></span>
+          <b>2. Pick</b>
+          <small>Choose a movie or source</small>
+        </div>
+        <span class="step-arrow" aria-hidden="true">→</span>
+        <div class="quick-step">
+          <span class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+          <b>3. Play</b>
+          <small>Video or embedded player</small>
+        </div>
+      </div>
+      <button id="quickStartBtn" class="btn primary quick-start" type="button">Start — open the menu</button>
+      <div class="quick-mini"><span>Menu = all controls</span><span>Tap outside to close</span></div>
+    </div>
+
+    <div id="advancedHelpContent" class="help-content" hidden>
+      <section class="help-section">
+        <h3>Every button &amp; box</h3>
+        <div class="help-grid">
+          <div><b>Find a movie box</b><p>Type a movie title to search the selected source, paste any movie/trailer page URL, or paste a direct MP4/M3U8 link.</p></div>
+          <div><b>Search source</b><p>Auto tries Archive.org first (free, no account), then the ww8.123moviesfree search API, 123movieszfree and IMDb. You can force one site here.</p></div>
+          <div><b>Open / Search</b><p>Runs the search, opens the pasted page, or plays a pasted direct video link. Enter does the same thing.</p></div>
+          <div><b>Result cards</b><p>Pick a movie. The reader loads its info page and finds trailer/video sources.</p></div>
+          <div><b>Video only</b><p>Plays the first detected MP4/M3U8 file inside the reader stage, with the source site's page removed. It tries the direct media URL first and then a Google Translate media route. Archive.org movies and signed 123Movies players are handled by the in-reader Movie player source.</p></div>
+          <div><b>Info text</b><p>Shows only the extracted title, synopsis, year, genre and cast in the reader stage. The cover is loaded through the Google image proxy.</p></div>
+          <div><b>Refresh sources</b><p>Re-reads the current page and rebuilds the source list.</p></div>
+          <div><b>Clear</b><p>Stops playback and hides the stage.</p></div>
+          <div><b>Movie player (in reader)</b><p>Builds the signed 123Movies/ployan player link and runs it inside the reader stage. No account, no new tab. Use this when the site only exposes a player page instead of a direct video file.</p></div>
+          <div><b>Movie player (Google tab)</b><p>Fallback that opens the signed player through Google Translate in a new tab, in case the in-reader player is blocked on your network.</p></div>
+          <div><b>Source buttons</b><p>Detected MP4/M3U8 files play in the reader stage using the best working media route. The signed 123Movies player also plays in the stage; other player pages open in a Google proxy tab.</p></div>
+          <div><b>Page view mode</b><p>Google proxy tab opens ordinary player/info pages through Google Translate in a new tab. Stage is for direct video clips and the signed 123Movies player — Google-translated pages cannot be framed, so they open in a tab instead.</p></div>
+          <div><b>Google Translate backup</b><p>Player pages always use Google Translate. This checkbox only controls the reader-route fallback used for lookup when the direct reader fails.</p></div>
+          <div><b>Menu tab</b><p>Opens and closes this control panel.</p></div>
+          <div><b>Help button</b><p>Opens this dialog. Press ? anywhere to open it.</p></div>
+          <div><b>HUD</b><p>Shows the current title and source name over the player.</p></div>
+          <div><b>Keyboard</b><p>/ focuses search, Enter searches, Space toggles play/pause, ? opens help.</p></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="help-footer">
+      <button id="helpGotItBtn" class="primary" type="button">Got it</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const LINK_READER = "https://r.jina.ai/";
+  const GOOGLE_TRANSLATE = "https://translate.google.com/translate?sl=auto&tl=en&u=";
+  const SITE_ZFREE = "https://123movieszfree.com";
+  const SITE_WW8 = "https://ww8.123moviesfree.net";
+  const SITE_ARCHIVE = "https://archive.org";
+  const PLAYER_BASE = "https://ployan.me";
+  const IMDB_FIND = "https://www.imdb.com/find/?q={q}&s=tt&ttype=ft";
+  const CACHE_TTL = 10 * 60 * 1000;
+  const CACHE_LIMIT = 40;
+  const RETRY_DELAYS = [400, 1000, 2200];
+  const LINK_TIMEOUT = 18000;
+
+  const $ = id => document.getElementById(id);
+  const els = {
+    panelTab: $("panelTab"), panel: $("controlPanel"),
+    input: $("linkInput"), openBtn: $("openBtn"), results: $("linkResults"),
+    searchSource: $("searchSource"),
+    movieTitle: $("movieTitle"), movieMeta: $("movieMeta"), sources: $("sources"),
+    videoOnlyBtn: $("videoOnlyBtn"), infoOnlyBtn: $("infoOnlyBtn"),
+    refreshBtn: $("refreshBtn"), clearBtn: $("clearBtn"),
+    viewMode: $("viewMode"), pageBtn: $("pageBtn"), googleFallback: $("googleFallback"),
+    empty: $("empty"), stageWrap: $("stageWrap"), video: $("video"), frame: $("frame"),
+    infoView: $("infoView"),
+    hudTitle: $("hudTitle"), hudSource: $("hudSource"), status: $("status"),
+    helpBtn: $("helpBtn"), helpOverlay: $("helpOverlay"), helpDialog: $("helpDialog"),
+    helpCloseBtn: $("helpCloseBtn"), helpGotItBtn: $("helpGotItBtn"),
+    quickHelpTab: $("quickHelpTab"), advancedHelpTab: $("advancedHelpTab"),
+    quickHelpContent: $("quickHelpContent"), advancedHelpContent: $("advancedHelpContent"),
+    helpTitle: $("helpTitle"), helpSubtitle: $("helpSubtitle"), quickStartBtn: $("quickStartBtn")
+  };
+
+  const state = {
+    seq: 0,
+    currentUrl: "",
+    currentTitle: "",
+    currentSource: "",
+    currentYear: "",
+    playerUrl: "",
+    trailerUrl: "",
+    isWw8: false,
+    archiveId: "",
+    ww8Mid: "",
+    ww8Server: "1",
+    ww8Episode: "1",
+    detailMarkdown: "",
+    combinedMarkdown: "",
+    info: null,
+    videos: [],
+    sources: [],
+    activeSource: -1,
+    abort: null,
+    statusTimer: 0,
+    blobUrl: "",
+    hls: null,
+    mediaToken: 0,
+    mediaController: null,
+    mediaCandidates: [],
+    mediaIndex: 0,
+    mediaFallback: false
+  };
+
+  const cache = new Map();
+  let cooldownUntil = 0;
+
+  function loadSettings() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("movie-reader-settings") || "{}");
+      els.viewMode.value = saved.viewMode === "stage" ? "stage" : "tab";
+      if (saved.searchSource) els.searchSource.value = saved.searchSource;
+      if (typeof saved.googleFallback === "boolean") els.googleFallback.checked = saved.googleFallback;
+    } catch (_) {}
+  }
+
+  function saveSettings() {
+    try {
+      localStorage.setItem("movie-reader-settings", JSON.stringify({
+        viewMode: els.viewMode.value,
+        searchSource: els.searchSource.value,
+        googleFallback: els.googleFallback.checked
+      }));
+    } catch (_) {}
+  }
+
+  function setStatus(text, kind = "") {
+    clearTimeout(state.statusTimer);
+    els.status.textContent = text;
+    els.status.className = kind ? `status-${kind}` : "";
+    if (kind) {
+      state.statusTimer = setTimeout(() => {
+        els.status.textContent = "Ready";
+        els.status.className = "";
+      }, 6000);
+    }
+  }
+
+  function showPanel() {
+    els.panel.classList.add("is-open");
+    els.panel.setAttribute("aria-hidden", "false");
+    els.panelTab.setAttribute("aria-expanded", "true");
+  }
+
+  function hidePanel() {
+    els.panel.classList.remove("is-open");
+    els.panel.setAttribute("aria-hidden", "true");
+    els.panelTab.setAttribute("aria-expanded", "false");
+  }
+
+  function setHelpMode(mode) {
+    const advanced = mode === "advanced";
+    els.quickHelpTab.classList.toggle("active", !advanced);
+    els.advancedHelpTab.classList.toggle("active", advanced);
+    els.quickHelpContent.hidden = advanced;
+    els.advancedHelpContent.hidden = !advanced;
+    els.helpTitle.textContent = advanced ? "Advanced Guide" : "How to use Movie Reader";
+    els.helpSubtitle.textContent = advanced
+      ? "Every button, box, setting and shortcut"
+      : "Fast setup and easy playback";
+  }
+
+  function showHelp() {
+    setHelpMode("quick");
+    els.helpOverlay.classList.add("show");
+    els.helpOverlay.setAttribute("aria-hidden", "false");
+    setTimeout(() => els.helpCloseBtn.focus(), 0);
+  }
+
+  function hideHelp() {
+    els.helpOverlay.classList.remove("show");
+    els.helpOverlay.setAttribute("aria-hidden", "true");
+    els.helpBtn.focus();
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function safeUrl(value) {
+    try {
+      const url = new URL(String(value || "").replace(/&amp;/g, "&"));
+      if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+      return url.href;
+    } catch (_) {
+      return "";
+    }
+  }
+
+  /* Every page view is wrapped in Google Translate so blocked movie hosts are
+     reached through Google's domain instead of directly. */
+  function googleProxyUrl(value) {
+    const url = safeUrl(value);
+    if (!url) return "";
+    try {
+      const parsed = new URL(url);
+      if (parsed.hostname === "translate.google.com" && parsed.pathname === "/translate" && parsed.searchParams.get("u")) {
+        return url;
+      }
+    } catch (_) {}
+    return GOOGLE_TRANSLATE + encodeURIComponent(url);
+  }
+
+  /* Google's /translate page is HTML, so it must never be used as a <video> src.
+     For media, try the real file first, then the translated-host route, which
+     proxies the file via a redirect when the media host itself is blocked. */
+  function mediaCandidates(value) {
+    const direct = safeUrl(value);
+    if (!direct) return [];
+    const translated = googleTranslateGoogUrl(direct, false);
+    return [...new Set([direct, translated].filter(Boolean))];
+  }
+
+  function isMediaUrl(value) {
+    return /\.(?:mp4|m3u8|webm|mkv|ogg|mov)(?:[?#]|$)/i.test(String(value || ""));
+  }
+
+  function openProxyTab(proxied, label) {
+    window.open(proxied, "_blank", "noopener,noreferrer");
+    setStatus(`Opened ${label} through Google Translate.`, "ok");
+  }
+
+  function extractMid(value) {
+    const match = String(value || "").match(/-(\d+)(?:\/?|$)/);
+    return match ? match[1] : "";
+  }
+
+  function archiveIdFromUrl(value) {
+    try {
+      const url = new URL(safeUrl(value));
+      if (!/(^|\.)archive\.org$/i.test(url.hostname)) return "";
+      const match = url.pathname.match(/^\/(?:details|download)\/([^/]+)/i);
+      return match ? decodeURIComponent(match[1]) : "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function googleTranslateGoogUrl(targetUrl, keepHash = false) {
+    const url = safeUrl(targetUrl);
+    if (!url) return "";
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.replace(/\./g, "-") + ".translate.goog";
+      const translateParams = "_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en-US";
+      const query = parsed.search
+        ? `${parsed.search.slice(1)}&${translateParams}`
+        : translateParams;
+      return `https://${host}${parsed.pathname}?${query}${keepHash ? parsed.hash : ""}`;
+    } catch (_) {
+      return "";
+    }
+  }
+
+  /* ww8 exposes clean metadata on its Google-translated page, which Jina can
+     read even when the source domain itself blocks anonymous reader access. */
+  async function readWw8Page(targetUrl, controller) {
+    const translated = googleTranslateGoogUrl(targetUrl);
+    if (!translated) throw new Error("That ww8 URL cannot be translated.");
+    return fetchCachedText(`${LINK_READER}${translated}`, `gjina:${translated}`, {
+      controller,
+      label: "Google reader",
+      attempts: 2,
+      skipCooldown: true
+    });
+  }
+
+  async function readWw8Loc(controller) {
+    try {
+      const response = await fetch(`${LINK_READER}${SITE_WW8}/cdn-cgi/trace`, {
+        signal: controller?.signal,
+        cache: "no-store",
+        credentials: "omit",
+        referrerPolicy: "no-referrer"
+      });
+      if (!response.ok) return "US";
+      const text = await response.text();
+      return (text.match(/\bloc=([A-Z]{2})/i) || [])[1] || "US";
+    } catch (_) {
+      return "US";
+    }
+  }
+
+  async function encryptWw8Token(message, keyText) {
+    if (!window.crypto?.subtle) return "";
+    const encoder = new TextEncoder();
+    const digest = await crypto.subtle.digest("SHA-256", encoder.encode(keyText));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await crypto.subtle.importKey(
+      "raw",
+      digest,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt"]
+    );
+    const cipher = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      key,
+      encoder.encode(message)
+    );
+    const bytes = new Uint8Array(12 + cipher.byteLength);
+    bytes.set(iv, 0);
+    bytes.set(new Uint8Array(cipher), 12);
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    /* ww8 does btoa(iv + cipher) and then applies Jt.encodeURI(), which is
+       base64url over that ASCII base64 string. Ployan reverses both layers. */
+    const inner = btoa(binary);
+    let outerBinary = "";
+    for (const byte of encoder.encode(inner)) outerBinary += String.fromCharCode(byte);
+    return btoa(outerBinary).split("+").join("-").split("/").join("_").replace(/=+$/g, "");
+  }
+
+  async function buildWw8PlayerUrl(controller) {
+    const mid = state.ww8Mid || extractMid(state.currentUrl);
+    if (!mid) return "";
+    const episode = state.ww8Episode || "1";
+    const server = state.ww8Server || "1";
+    const loc = await readWw8Loc(controller);
+    const stamp = Math.floor(Date.now() / 1000);
+    const token = await encryptWw8Token(`${mid}+${episode}+${server}+${loc}+${stamp}`, loc);
+    if (!token) return "";
+    return `${PLAYER_BASE}/watch/?v${server}${episode}#${token}`;
+  }
+
+  function looksLikeUrl(value) {
+    const v = String(value || "").trim();
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) return true;
+    return /^[\w-]+(?:\.[\w-]+)+(?:\/|$)/i.test(v);
+  }
+
+  function normalizeUrl(value) {
+    let v = String(value || "").trim();
+    if (v.startsWith("//")) v = "https:" + v;
+    else if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) v = "https://" + v;
+    return v;
+  }
+
+  function cacheText(key, text) {
+    cache.set(key, { at: Date.now(), text });
+    while (cache.size > CACHE_LIMIT) cache.delete(cache.keys().next().value);
+  }
+
+  function readerAccept(value) {
+    const text = String(value || "");
+    if (!text.trim() || text.length < 40) return "reader returned an empty page";
+    if (/^\s*\{/.test(text) && /RateLimitTriggeredError|"code"\s*:\s*429|"retryAfter"/i.test(text.slice(0, 600))) {
+      const seconds = Number((text.match(/"retryAfter"\s*:\s*(\d+(?:\.\d+)?)/i) || [])[1]) || 3;
+      const error = new Error("reader rate limit reached");
+      error.status = 429;
+      error.retryable = true;
+      error.retryAfterMs = Math.ceil(seconds * 1000);
+      throw error;
+    }
+    if (/^\s*\{/.test(text) && /"error"|"message"\s*:/i.test(text.slice(0, 300))) {
+      return "reader returned an error response";
+    }
+    return "";
+  }
+
+  function extractReaderPre(html) {
+    try {
+      const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+      const pre = doc.querySelector("pre");
+      return pre ? (pre.textContent || "") : "";
+    } catch (_) {
+      const match = String(html || "").match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+      if (!match) return "";
+      const temp = document.createElement("textarea");
+      temp.innerHTML = match[1];
+      return temp.value;
+    }
+  }
+
+  async function fetchCachedText(url, key, {
+    controller, timeoutMs = LINK_TIMEOUT, label = "reader", accept = readerAccept,
+    transform = null, attempts = RETRY_DELAYS.length + 1, skipCooldown = false
+  }) {
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.at <= CACHE_TTL) return hit.text;
+    cache.delete(key);
+
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (attempt > 0) await sleep(RETRY_DELAYS[attempt - 1]);
+      const cooldown = skipCooldown ? 0 : cooldownUntil - Date.now();
+      if (cooldown > 0) await sleep(cooldown);
+      if (controller.signal.aborted) throw new DOMException("Aborted", "AbortError");
+
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, timeoutMs);
+
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          signal: controller.signal,
+          cache: "no-store",
+          credentials: "omit",
+          referrerPolicy: "no-referrer",
+          headers: { Accept: label === "Google reader" ? "text/html" : "text/plain" }
+        });
+
+        if (!response.ok) {
+          const error = new Error(`${label} returned HTTP ${response.status}`);
+          error.status = response.status;
+          error.retryable = response.status === 429 || response.status >= 500;
+          throw error;
+        }
+
+        let text = await response.text();
+        if (transform) text = transform(text);
+        const invalid = accept(text);
+        if (invalid) throw new Error(invalid);
+
+        cacheText(key, text);
+        return text;
+      } catch (error) {
+        if (timedOut) throw new Error(`${label} request timed out`);
+        if (controller.signal.aborted) throw new DOMException("Aborted", "AbortError");
+        if (error.status === 429) {
+          const wait = Math.max(1200 * (attempt + 1), Number(error.retryAfterMs) || 0);
+          cooldownUntil = Math.max(cooldownUntil, Date.now() + wait);
+        }
+        if (!error.retryable || attempt >= attempts - 1) throw error;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    throw new Error(`${label} request failed`);
+  }
+
+  function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+  async function readPage(targetUrl, controller) {
+    const direct = () => fetchCachedText(`${LINK_READER}${targetUrl}`, `jina:${targetUrl}`, {
+      controller, attempts: 2
+    });
+
+    try {
+      return await direct();
+    } catch (error) {
+      if (error?.name === "AbortError") throw error;
+      if (!els.googleFallback.checked) throw error;
+
+      const wrapped = `${GOOGLE_TRANSLATE}${encodeURIComponent(`${LINK_READER}${targetUrl}`)}`;
+      try {
+        const text = await fetchCachedText(wrapped, `gjina:${targetUrl}`, {
+          controller,
+          label: "Google reader",
+          attempts: 2,
+          skipCooldown: true,
+          transform: extractReaderPre,
+          accept: readerAccept
+        });
+        cacheText(`jina:${targetUrl}`, text);
+        return text;
+      } catch (googleError) {
+        if (googleError?.name === "AbortError") throw googleError;
+        try { return await direct(); }
+        catch (_) { throw error; }
+      }
+    }
+  }
+
+  function searchTargets(query) {
+    const q = String(query || "").trim();
+    const plus = encodeURIComponent(q).replace(/%20/g, "+");
+    const selected = els.searchSource.value;
+    const yearMatch = q.match(/\b(?:19|20)\d{2}\b/);
+    const titleQuery = yearMatch ? q.replace(yearMatch[0], "").replace(/\s+/g, " ").trim() : q;
+    const archiveQuery = `title:(${titleQuery || q})${yearMatch ? ` AND year:${yearMatch[0]}` : ""} AND mediatype:movies`;
+    const params = new URLSearchParams({
+      q: archiveQuery,
+      rows: "16",
+      page: "1",
+      output: "json"
+    });
+    params.append("fl[]", "identifier");
+    params.append("fl[]", "title");
+    params.append("fl[]", "year");
+    const archive = {
+      key: "archive",
+      label: "Archive.org",
+      url: `${SITE_ARCHIVE}/advancedsearch.php?${params.toString()}`,
+      query: titleQuery || q
+    };
+    const ww8Api = {
+      key: "ww8Api",
+      label: "123Movies",
+      url: `${SITE_WW8}/searching?q=${encodeURIComponent(q)}&limit=40&offset=0`
+    };
+
+    if (selected === "archive") return [archive];
+    if (selected === "zfree") return [{ key: "zfree", label: "123MoviesZFree", url: `${SITE_ZFREE}/search/${plus}` }];
+    if (selected === "ww8") return [ww8Api];
+    if (selected === "imdb") return [{ key: "imdb", label: "IMDb", url: IMDB_FIND.replace("{q}", encodeURIComponent(q)) }];
+
+    return [
+      archive,
+      ww8Api,
+      { key: "zfree", label: "123MoviesZFree", url: `${SITE_ZFREE}/search/${plus}` },
+      { key: "imdb", label: "IMDb", url: IMDB_FIND.replace("{q}", encodeURIComponent(q)) }
+    ];
+  }
+
+  function jsonFromMarkdown(value) {
+    let text = String(value || "").trim();
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start < 0 || end <= start) return null;
+    text = text.slice(start, end + 1);
+    try { return JSON.parse(text); }
+    catch (_) { return null; }
+  }
+
+  function parseArchiveResults(markdown, source) {
+    const data = jsonFromMarkdown(markdown);
+    const docs = Array.isArray(data?.response?.docs) ? data.response.docs : [];
+    const wanted = cleanText(source?.query || "").toLowerCase();
+    const junk = /trailer|preview|sample|teaser|behind the scenes|making of|clip|extrait|opening\s*(?:&|and)?\s*closing|opening to|scene from|review|discussion|podcast|mix\s*tape|simula/i;
+    const scored = [];
+    const seen = new Set();
+
+    for (const doc of docs) {
+      const id = String(doc?.identifier || "").trim();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      const name = cleanText(doc.title || id.replace(/[_-]+/g, " "));
+      if (!name || junk.test(name)) continue;
+      const lower = name.toLowerCase();
+      const score = !wanted ? 1
+        : lower === wanted ? 100
+        : lower.startsWith(wanted) ? 60
+        : lower.includes(wanted) ? 30
+        : 0;
+      if (!score) continue;
+      scored.push({
+        score,
+        item: {
+          id,
+          name,
+          year: doc.year ? String(doc.year) : "",
+          cover: `${SITE_ARCHIVE}/services/img/${encodeURIComponent(id)}`,
+          url: `${SITE_ARCHIVE}/details/${encodeURIComponent(id)}`,
+          source: source.label,
+          archive: true,
+          archiveId: id
+        }
+      });
+    }
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, 12).map(entry => entry.item);
+  }
+
+  function parseArchiveMetadata(markdown, id) {
+    const data = jsonFromMarkdown(markdown);
+    const files = Array.isArray(data?.files) ? data.files : [];
+    const videos = files.filter(file =>
+      /\.(?:mp4|m4v|webm)$/i.test(String(file?.name || "")) &&
+      Number(file?.size || 0) > 1000000
+    );
+    if (!videos.length) return null;
+
+    videos.sort((a, b) => {
+      const score = file =>
+        (/\.ia\.mp4$/i.test(file.name) ? 1000000 : 0) +
+        (/h\.264|mpeg-4/i.test(file.format || "") ? 500000 : 0) +
+        Number(file.size || 0);
+      return score(b) - score(a);
+    });
+
+    const picked = videos[0];
+    const titleText = cleanText(data?.metadata?.title || "");
+    const yearMatch = String(data?.metadata?.date || "").match(/\b(?:19|20)\d{2}\b/)
+      || titleText.match(/\b(?:19|20)\d{2}\b/);
+    return {
+      videoUrl: `${SITE_ARCHIVE}/download/${encodeURIComponent(String(data?.metadata?.identifier || id || ""))}/${encodeURIComponent(picked.name)}`,
+      title: titleText,
+      year: yearMatch ? yearMatch[0] : String(data?.metadata?.year || ""),
+      description: String(data?.metadata?.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+      license: String(data?.metadata?.licenseurl || "")
+    };
+  }
+
+  function parseWw8Results(markdown, source) {
+    let text = String(markdown || "").trim();
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) text = text.slice(start, end + 1);
+
+    let data;
+    try { data = JSON.parse(text); }
+    catch (_) { return []; }
+
+    const rows = Array.isArray(data?.data) ? data.data : [];
+    const results = [];
+    const seen = new Set();
+
+    for (const row of rows) {
+      const slug = String(row?.s || "").trim();
+      if (!slug || seen.has(slug)) continue;
+      seen.add(slug);
+      const kind = row.d === "m" ? "movie" : "season";
+      const name = cleanText(row.t || slug.replace(/-/g, " "));
+      results.push({
+        id: slug,
+        name,
+        year: row.y ? String(row.y) : "",
+        cover: `https://img.icdn.my.id/thumb/w_200/h_300/${slug}.jpg`,
+        url: `${SITE_WW8}/${kind}/${slug}/`,
+        source: source.label,
+        ww8: true,
+        mid: extractMid(slug)
+      });
+      if (results.length >= 12) break;
+    }
+    return results;
+  }
+
+  function parse123Results(markdown, source) {
+    const results = [];
+    const seen = new Set();
+    const text = String(markdown || "");
+
+    for (const line of text.split(/\r?\n/)) {
+      /* Jina keeps the cover, trailing title/year text, and movie link on one line. */
+      const row = line.match(/\[!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)([^\]]*)\]\((https?:\/\/[^)\s]+)\)/i);
+      if (!row) continue;
+
+      const href = safeUrl(row[4].replace(/&amp;/g, "&"));
+      if (!href) continue;
+
+      let url;
+      try { url = new URL(href); } catch (_) { continue; }
+      const isMovie = /^\/movies\//i.test(url.pathname);
+      const isShow = /^\/(tv|tv-series)\//i.test(url.pathname);
+      if (!isMovie && !isShow) continue;
+      if (seen.has(url.href)) continue;
+      seen.add(url.href);
+
+      const alt = row[1].replace(/^Image\s*\d+:\s*/i, "").trim();
+      const trailing = row[3].replace(/\s+/g, " ").trim();
+      let name = trailing || alt;
+      let year = "";
+
+      const yearMatch = name.match(/^((?:19|20)\d{2})\s+(.+)$/);
+      if (yearMatch) {
+        year = yearMatch[1];
+        name = yearMatch[2].trim();
+      } else {
+        year = (name.match(/\((19|20)\d{2}\)/) || [])[0]?.replace(/[()]/g, "") || "";
+        name = name.replace(/\s*\((19|20)\d{2}\)\s*$/, "").trim();
+      }
+
+      if (!name || /^123movies?$/i.test(name)) continue;
+
+      results.push({
+        id: url.pathname,
+        name,
+        year,
+        cover: safeUrl(row[2].replace(/&amp;/g, "&")),
+        url: url.href,
+        source: source.label
+      });
+      if (results.length >= 12) break;
+    }
+
+    /* Prefer movies, but keep shows if that is all the site returned. */
+    const movies = results.filter(item => /^\/movies\//i.test(item.id));
+    return movies.length ? movies : results;
+  }
+
+  function parseImdbResults(markdown) {
+    const results = [];
+    const seen = new Set();
+    let pending = null;
+
+    for (const line of String(markdown || "").split(/\r?\n/)) {
+      const image = line.match(/!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/i);
+      if (image) {
+        const alt = image[1].replace(/^Image\s*\d+:\s*/i, "").trim();
+        const inIndex = alt.lastIndexOf(" in ");
+        pending = {
+          name: inIndex >= 0 ? alt.slice(inIndex + 4).trim() : alt,
+          cover: safeUrl(image[2])
+        };
+      }
+
+      const link = line.match(/\[([^\]]*)\]\((https?:\/\/www\.imdb\.com\/title\/(tt\d+)[^)\s]*)\)/i);
+      if (!link) continue;
+
+      const label = link[1].replace(/\s+/g, " ").trim();
+      const name = label && label !== "[]" ? label : (pending?.name || `Movie ${link[3]}`);
+      const id = link[3];
+      if (seen.has(id)) { pending = null; continue; }
+      seen.add(id);
+
+      const year = (name.match(/\((19|20)\d{2}\)/) || [])[0] || "";
+      results.push({
+        id,
+        name: name.replace(/\s*\((19|20)\d{2}\)\s*$/, "").trim(),
+        year: year.replace(/[()]/g, ""),
+        cover: pending?.cover || "",
+        url: `https://www.imdb.com/title/${id}/`,
+        source: "IMDb"
+      });
+      pending = null;
+      if (results.length >= 12) break;
+    }
+    return results;
+  }
+
+  function extractSources(markdown) {
+    const found = [];
+    const seen = new Set();
+    const text = String(markdown || "").replace(/&amp;/g, "&");
+
+    function add(raw, label) {
+      let url = safeUrl(raw);
+      if (!url || seen.has(url)) return;
+      if (/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(url)) return;
+
+      let host = "";
+      try { host = new URL(url).hostname; } catch (_) { return; }
+
+      /* Movie-site links are navigation, not playable files. The player page is read separately. */
+      if (/(^|\.)(123movieszfree\.com|123moviesfree\.net|imdb\.com)$/i.test(host)) return;
+      if (/weaversprinkle|icdn\.my\.id|ployan\.me|googleapis|gstatic|doubleclick/i.test(host)) return;
+      if (/\/(register|search|home|genre|year|persona|tag|icon|logo|faqs|dmca)([/?#]|$)/i.test(url)) return;
+
+      let type = "iframe";
+      let cleanLabel = String(label || "").replace(/^Image\s*\d+:\s*/i, "").trim() || "Web player";
+
+      const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{6,})/i);
+      if (yt) {
+        type = "iframe";
+        url = `https://www.youtube.com/embed/${yt[1]}`;
+        cleanLabel = "YouTube";
+      } else if (/\.(mp4|m3u8|webm|ogg|mov)(\?|$)/i.test(url)) {
+        type = "video";
+        cleanLabel = "Direct clip (may be intro)";
+      } else if (/player\.vimeo\.com\/video\//i.test(url)) {
+        type = "iframe";
+        cleanLabel = "Vimeo";
+      } else if (/dailymotion\.com\/embed\//i.test(url)) {
+        type = "iframe";
+        cleanLabel = "Dailymotion";
+      } else if (/^https?:\/\/[^\/]+\/?$/i.test(url)) {
+        return;
+      } else if (!/(video|player|embed|stream|watch|\/e\/|\/v\/)/i.test(`${cleanLabel} ${url}`)) {
+        return;
+      }
+
+      if (seen.has(url)) return;
+      seen.add(url);
+      found.push({ url, label: cleanLabel, type });
+    }
+
+    /* Match every ](...) segment so nested image links still expose the outer page URL. */
+    const linked = /\]\((https?:\/\/[^)\s]+)(?:\s+"[^"]*")?\)/g;
+    let match;
+    while ((match = linked.exec(text))) add(match[1], "Web player");
+    const bare = /https?:\/\/[^\s)'"<>]+/g;
+    while ((match = bare.exec(text))) add(match[0], "Embedded player");
+
+    return found.slice(0, 12);
+  }
+
+  function cleanText(value) {
+    return String(value || "")
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+      .replace(/\[\s*\]\([^)]*\)/g, "")
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/\*\*/g, "")
+      .replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, "\"")
+      .replace(/\s+/g, " ").trim();
+  }
+
+  /* Pull the useful text out of the reader markdown so the reader can show
+     movie information without displaying the source site around it. */
+  function parseInfo(markdown, fallback) {
+    const md = String(markdown || "");
+    const lines = md.split(/\r?\n/);
+    const title = cleanText((md.match(/^#\s+(.+)$/m) || [])[1] || fallback || "");
+    const metaLine = lines.find(line => /\[(?:19|20)\d{2}\]/.test(line) && !/^\s*[-*]\s+\*\*/i.test(line));
+    let meta = cleanText(metaLine || "");
+
+    const imageUrls = [];
+    for (const match of md.matchAll(/!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/gi)) {
+      if (/icon|logo|no-cover/i.test(match[1])) continue;
+      const url = safeUrl(match[1]);
+      if (url && !imageUrls.includes(url)) imageUrls.push(url);
+    }
+    const cover = imageUrls.find(url => /thumb|poster|w_200/i.test(url)) || imageUrls[0] || "";
+
+    const details = [];
+    for (const line of lines) {
+      const row = line.match(/^\s*(?:[-*]\s+)?\*\*([^*]+):\*\*\s*(.*)$/);
+      if (!row) continue;
+      const label = cleanText(row[1]);
+      const value = cleanText(row[2]);
+      if (label && value) details.push({ label, value });
+    }
+
+    if (!meta) {
+      const duration = details.find(item => /duration/i.test(item.label));
+      const release = details.find(item => /release|year/i.test(item.label));
+      meta = [duration?.value, release?.value].filter(Boolean).join(" · ");
+    }
+
+    let synopsis = "";
+    for (let i = 0; i < lines.length; i += 1) {
+      if (!/^\*\*[^*]+\*\*\s*$/.test(lines[i].trim())) continue;
+      synopsis = lines.slice(i + 1, i + 4).map(cleanText).find(text => text.length > 40) || "";
+      if (synopsis) break;
+    }
+    if (!synopsis) {
+      synopsis = lines.map(cleanText).find(text =>
+        text.length > 60 && !/^(Title:|URL Source:|Markdown Content:)/.test(text)
+      ) || "";
+    }
+
+    return {
+      title: title || fallback || "Movie",
+      meta,
+      cover,
+      details: details.slice(0, 6),
+      synopsis: synopsis.slice(0, 700)
+    };
+  }
+
+  function extractVideos(markdown) {
+    const found = [];
+    const seen = new Set();
+    const text = String(markdown || "").replace(/&amp;/g, "&");
+    const pattern = /(https?:\/\/[^\s)'"<>]+?\.(?:mp4|m3u8|webm|mkv)(?:\?[^\s)'"<>]*)?)/gi;
+    let match;
+    while ((match = pattern.exec(text))) {
+      const url = safeUrl(match[1]);
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      found.push({ url, label: /\.m3u8(?:\?|$)/i.test(url) ? "HLS stream" : "Video file", type: "video" });
+    }
+    return found.slice(0, 8);
+  }
+
+  function findExtraPages(markdown, currentUrl) {
+    const pages = [];
+    const seen = new Set();
+    if (currentUrl) seen.add(currentUrl);
+    const linked = /\]\((https?:\/\/[^)\s]+)(?:\s+"[^"]*")?\)/g;
+    let match;
+
+    while ((match = linked.exec(String(markdown || "")))) {
+      const url = safeUrl(match[1].replace(/#.*$/, ""));
+      if (!url || seen.has(url)) continue;
+      if (!/(^|\.)(123movieszfree\.com|123moviesfree\.net)$/i.test(new URL(url).hostname)) continue;
+      if (/\/ver\.html(?:[?#]|$)/i.test(url) || /\/trailer\/?(?:[?#]|$)/i.test(url)) {
+        seen.add(url);
+        pages.push(url);
+      }
+    }
+    return pages.slice(0, 3);
+  }
+
+  function titleFromMarkdown(markdown, fallback) {
+    const heading = String(markdown || "").match(/^#\s+(.+)$/m);
+    if (heading) {
+      return cleanText(heading[1])
+        .replace(/\s+Full Movie.*$/i, "")
+        .replace(/\s*\|.*$/i, "")
+        .replace(/\s*[-–]\s*123movies?\s*$/i, "")
+        .trim();
+    }
+    const line = String(markdown || "").match(/^Title:\s*(.+)$/im);
+    if (line) {
+      return cleanText(line[1])
+        .replace(/\s+Full Movie.*$/i, "")
+        .replace(/\s*\|\s*IMDb\s*$/i, "")
+        .replace(/\s*[-–]\s*123movies?\s*$/i, "")
+        .trim();
+    }
+    return fallback;
+  }
+
+  function renderResults(results, query) {
+    window.__movieResults = results || [];
+    els.results.innerHTML = "";
+    if (!results.length) {
+      els.results.innerHTML = `<p class="hint">No results for “${escapeHtml(query)}”.</p>`;
+      return;
+    }
+
+    results.forEach((item, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "result";
+      button.dataset.index = String(index);
+      button.innerHTML = `
+        ${item.cover ? `<img src="${escapeHtml(googleProxyUrl(item.cover))}" alt="" referrerpolicy="no-referrer">` : '<img alt="" style="display:grid;place-items:center">'}
+        <span><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.year || "IMDb")}</small></span>
+      `;
+      els.results.appendChild(button);
+    });
+  }
+
+  function renderSources() {
+    els.sources.innerHTML = "";
+    if (!state.sources.length) {
+      els.sources.innerHTML = '<p class="hint">No video sources found. Try Refresh sources.</p>';
+      return;
+    }
+
+    state.sources.forEach((source, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "source" + (index === state.activeSource ? " active" : "");
+      button.dataset.index = String(index);
+      const kind = source.type === "info" ? "TEXT"
+        : source.type === "video" ? "VIDEO"
+        : source.type === "ww8" || source.type === "player" ? "PLAY" : "EMBED";
+      button.innerHTML = `<span>${escapeHtml(source.label)}</span><span>${kind}</span>`;
+      els.sources.appendChild(button);
+    });
+  }
+
+  function showStage() {
+    els.empty.hidden = true;
+    els.stageWrap.hidden = false;
+  }
+
+  function hideStage() {
+    state.mediaToken += 1;
+    state.mediaController?.abort();
+    state.mediaFallback = false;
+    els.video.pause();
+    els.video.removeAttribute("src");
+    els.frame.src = "about:blank";
+    els.infoView.hidden = true;
+    els.infoView.innerHTML = "";
+    if (state.hls) {
+      state.hls.destroy();
+      state.hls = null;
+    }
+    els.empty.hidden = false;
+    els.stageWrap.hidden = true;
+    state.detailMarkdown = "";
+    state.combinedMarkdown = "";
+    state.info = null;
+    state.videos = [];
+    state.sources = [];
+    state.activeSource = -1;
+    state.currentUrl = "";
+    state.currentTitle = "";
+    state.currentSource = "";
+    state.currentYear = "";
+    state.playerUrl = "";
+    state.trailerUrl = "";
+    state.isWw8 = false;
+    state.archiveId = "";
+    state.ww8Mid = "";
+    renderSources();
+    els.movieTitle.textContent = "Nothing selected";
+    els.movieMeta.textContent = "";
+    els.hudTitle.textContent = "—";
+    els.hudSource.textContent = "—";
+  }
+
+  function revokeBlob() {
+    if (state.blobUrl) {
+      URL.revokeObjectURL(state.blobUrl);
+      state.blobUrl = "";
+    }
+  }
+
+  function renderInfo({ silent = false } = {}) {
+    const info = state.info;
+    if (!info) {
+      if (!silent) setStatus("No info text was found on that page.", "warn");
+      return false;
+    }
+
+    const details = info.details.map(item => `
+      <div><dt>${escapeHtml(item.label)}</dt><dd>${escapeHtml(item.value)}</dd></div>
+    `).join("");
+    const cover = info.cover ? googleProxyUrl(info.cover) : "";
+    const fullPage = googleProxyUrl(state.currentUrl);
+
+    els.infoView.innerHTML = `
+      <div class="info-card">
+        ${cover ? `<img class="info-cover" src="${escapeHtml(cover)}" alt="" referrerpolicy="no-referrer">` : ""}
+        <div class="info-body">
+          <h2>${escapeHtml(info.title)}</h2>
+          <p class="info-meta">${escapeHtml([info.meta, state.currentSource].filter(Boolean).join(" · "))}</p>
+          <p class="info-plot">${escapeHtml(info.synopsis)}</p>
+          <dl class="info-details">${details}</dl>
+          ${fullPage ? `<a class="info-link" href="${escapeHtml(fullPage)}" target="_blank" rel="noopener noreferrer">Open full info through Google Translate ↗</a>` : ""}
+        </div>
+      </div>
+    `;
+
+    showStage();
+    els.video.pause();
+    els.video.removeAttribute("src");
+    els.video.hidden = true;
+    els.frame.hidden = true;
+    els.frame.src = "about:blank";
+    els.infoView.hidden = false;
+    els.hudTitle.textContent = info.title;
+    els.hudSource.textContent = "Info text";
+    if (!silent) setStatus("Showing info text only.", "ok");
+    return true;
+  }
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Could not load HLS player"));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function attachVideoSource(url, onFatal) {
+    if (state.hls) {
+      state.hls.destroy();
+      state.hls = null;
+    }
+    els.video.removeAttribute("src");
+
+    if (!/\.m3u8(?:[?#]|$)/i.test(url)) {
+      els.video.src = url;
+      return;
+    }
+    if (els.video.canPlayType("application/vnd.apple.mpegurl")) {
+      els.video.src = url;
+      return;
+    }
+
+    try {
+      if (!window.Hls) {
+        await loadScript("https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js");
+      }
+      if (window.Hls?.isSupported()) {
+        state.hls = new window.Hls();
+        if (onFatal && window.Hls.Events?.ERROR) {
+          state.hls.on(window.Hls.Events.ERROR, (_event, data) => {
+            if (data?.fatal) onFatal();
+          });
+        }
+        state.hls.loadSource(url);
+        state.hls.attachMedia(els.video);
+      } else {
+        els.video.src = url;
+      }
+    } catch (_) {
+      els.video.src = url;
+    }
+  }
+
+  function playVideoUrl(url, label, index = -1) {
+    const candidates = mediaCandidates(url);
+    if (!candidates.length) {
+      setStatus("That video URL cannot be played.", "bad");
+      return;
+    }
+
+    showStage();
+    revokeBlob();
+    state.activeSource = index;
+    renderSources();
+    els.infoView.hidden = true;
+    els.frame.hidden = true;
+    els.frame.src = "about:blank";
+    els.video.hidden = false;
+    els.hudTitle.textContent = state.currentTitle || "Video";
+    els.hudSource.textContent = label;
+
+    state.mediaController?.abort();
+    const token = ++state.mediaToken;
+    state.mediaCandidates = candidates;
+    state.mediaIndex = 0;
+    state.mediaFallback = false;
+
+    const tryCurrent = () => {
+      if (token !== state.mediaToken) return;
+      const current = candidates[state.mediaIndex];
+      const hasFallback = state.mediaIndex < candidates.length - 1;
+      state.mediaFallback = hasFallback;
+      const controller = new AbortController();
+      state.mediaController = controller;
+      let failed = false;
+
+      const fail = () => {
+        if (failed || token !== state.mediaToken) return;
+        failed = true;
+        controller.abort();
+        if (hasFallback) {
+          state.mediaIndex += 1;
+          setStatus("Direct video route failed — trying the Google Translate media route…", "warn");
+          tryCurrent();
+        } else {
+          state.mediaFallback = false;
+          setStatus("This video could not be played here. Try a different source.", "bad");
+        }
+      };
+      const ready = () => {
+        if (failed || token !== state.mediaToken) return;
+        state.mediaFallback = false;
+        controller.abort();
+        setStatus(`Playing ${label}.`, "ok");
+      };
+
+      els.video.addEventListener("error", fail, { once: true, signal: controller.signal });
+      els.video.addEventListener("loadeddata", ready, { once: true, signal: controller.signal });
+      void attachVideoSource(current, fail);
+      void els.video.play().catch(() => {});
+      if (state.mediaIndex === 0) {
+        setStatus(`Loading ${label}…`, "warn");
+      }
+    };
+
+    tryCurrent();
+  }
+
+  function pageUrl() {
+    return state.playerUrl || state.currentUrl;
+  }
+
+  function openPage() {
+    if (!state.currentUrl) {
+      setStatus("Open a movie first.", "warn");
+      return;
+    }
+    const proxied = googleProxyUrl(pageUrl());
+    if (!proxied) {
+      setStatus("That page URL cannot be proxied.", "bad");
+      return;
+    }
+    /* Google's translated pages send frame-ancestors rules, so a reader-stage
+       iframe always fails. Open the real proxied page as a normal top-level tab. */
+    openProxyTab(proxied, "player page");
+  }
+
+  async function playSource(index) {
+    const source = state.sources[index];
+    if (!source) return;
+
+    if (source.type === "info") {
+      state.activeSource = index;
+      renderSources();
+      renderInfo();
+      return;
+    }
+
+    if (source.type === "video") {
+      playVideoUrl(source.url, source.label, index);
+      return;
+    }
+
+    if (source.type === "ww8" || source.type === "player") {
+      state.activeSource = index;
+      renderSources();
+      setStatus("Building the movie player link…", "warn");
+      const player = await buildWw8PlayerUrl(state.abort);
+      if (!player) {
+        setStatus("Could not build the movie player link. Open the info page instead.", "bad");
+        return;
+      }
+      if (source.mode === "google") {
+        openProxyTab(googleTranslateGoogUrl(player, true), source.label);
+      } else {
+        showPlayerFrame(player, "Movie player", index);
+      }
+      return;
+    }
+
+    const proxied = googleProxyUrl(source.url);
+    if (!proxied) {
+      setStatus("That source URL cannot be proxied.", "bad");
+      return;
+    }
+    /* Embedded/player pages cannot be framed from Google Translate. */
+    openProxyTab(proxied, source.label);
+  }
+
+  function showPlayerFrame(url, label, index = -1) {
+    if (!safeUrl(url)) {
+      setStatus("That player URL cannot be opened.", "bad");
+      return;
+    }
+    state.mediaController?.abort();
+    state.mediaToken += 1;
+    if (state.hls) {
+      state.hls.destroy();
+      state.hls = null;
+    }
+    showStage();
+    revokeBlob();
+    if (index >= 0) {
+      state.activeSource = index;
+      renderSources();
+    }
+    els.video.pause();
+    els.video.removeAttribute("src");
+    els.video.hidden = true;
+    els.infoView.hidden = true;
+    els.infoView.innerHTML = "";
+    els.frame.hidden = false;
+    els.frame.src = url;
+    els.hudTitle.textContent = state.currentTitle || label;
+    els.hudSource.textContent = label;
+    setStatus("Movie player is running inside the reader.", "ok");
+  }
+
+  function showVideoOnly() {
+    const video = state.videos[0];
+    if (video) {
+      playVideoUrl(video.url, "Video only");
+      return;
+    }
+    const playerIndex = state.sources.findIndex(source => source.type === "player" || source.type === "ww8");
+    if (playerIndex >= 0) {
+      void playSource(playerIndex);
+      return;
+    }
+    setStatus("No direct video file was found. Use the movie player source.", "warn");
+  }
+
+  async function loadCurrentUrl({ silent = false } = {}) {
+    if (!state.currentUrl) return;
+    if (!silent) setStatus("Reading movie page and player…", "warn");
+
+    state.abort?.abort();
+    state.abort = new AbortController();
+    state.playerUrl = "";
+    state.trailerUrl = "";
+    const archiveId = state.archiveId || archiveIdFromUrl(state.currentUrl);
+    state.archiveId = archiveId;
+    let isWw8 = false;
+    try {
+      isWw8 = /(^|\.)123moviesfree\.net$/i.test(new URL(state.currentUrl).hostname);
+    } catch (_) {}
+    state.isWw8 = isWw8;
+    if (isWw8) state.ww8Mid = state.ww8Mid || extractMid(state.currentUrl);
+    else state.ww8Mid = "";
+    const seq = ++state.seq;
+
+    if (archiveId) {
+      try {
+        const metaMarkdown = await readPage(
+          `${SITE_ARCHIVE}/metadata/${encodeURIComponent(archiveId)}`,
+          state.abort
+        );
+        if (seq !== state.seq) return;
+        const meta = parseArchiveMetadata(metaMarkdown, archiveId);
+        if (!meta) throw new Error("That Archive.org item has no playable video file.");
+
+        state.currentTitle = meta.title || state.currentTitle || archiveId;
+        state.currentYear = meta.year || state.currentYear;
+        state.videos = [{ url: meta.videoUrl, label: "Archive.org video", type: "video" }];
+        state.info = {
+          title: state.currentTitle,
+          meta: [state.currentSource || "Archive.org", state.currentYear].filter(Boolean).join(" · "),
+          cover: `${SITE_ARCHIVE}/services/img/${encodeURIComponent(archiveId)}`,
+          details: [
+            { label: "Source", value: "Archive.org" },
+            { label: "Item", value: archiveId },
+            ...(meta.license ? [{ label: "License", value: meta.license }] : [])
+          ],
+          synopsis: meta.description.slice(0, 700)
+        };
+        state.sources = [
+          { url: meta.videoUrl, label: "Video only", type: "video" },
+          { url: state.currentUrl, label: "Info text", type: "info" },
+          { url: state.currentUrl, label: "Archive.org page", type: "iframe" }
+        ];
+        state.activeSource = -1;
+        renderSources();
+        renderInfo({ silent: true });
+        els.movieTitle.textContent = state.currentTitle;
+        els.movieMeta.textContent = state.info.meta;
+        els.hudTitle.textContent = state.currentTitle;
+        setStatus("Archive.org video found. Choose Video only to play it inside the reader.", "ok");
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError" || seq !== state.seq) return;
+        state.sources = [{ url: state.currentUrl, label: "Open page", type: "iframe" }];
+        renderSources();
+        setStatus("Could not read that Archive.org item. Try another movie.", "bad");
+        return;
+      }
+    }
+
+    try {
+      const detailMarkdown = isWw8
+        ? await readWw8Page(state.currentUrl, state.abort)
+        : await readPage(state.currentUrl, state.abort);
+      if (seq !== state.seq) return;
+
+      /* ww8 shows the default player server in the info page. Using the wrong
+         server makes ployan reject the signed token as an unavailable video. */
+      if (isWw8) {
+        state.ww8Server = (detailMarkdown.match(/Playing on:\s*Server\s*(\d+)/i) || [])[1]
+          || state.ww8Server
+          || "1";
+      }
+
+      /* 123movieszfree puts its own player on ver.html. ww8 builds a signed
+         player URL instead, so there is no extra markdown page to read. */
+      const extraPages = isWw8 ? [] : findExtraPages(detailMarkdown, state.currentUrl);
+      state.playerUrl = extraPages.find(url => /\/ver\.html(?:[?#]|$)/i.test(url)) || "";
+      state.trailerUrl = extraPages.find(url => /\/trailer\/?(?:[?#]|$)/i.test(url)) || "";
+
+      let combined = detailMarkdown;
+      for (const extra of extraPages) {
+        if (seq !== state.seq || state.abort.signal.aborted) break;
+        try {
+          combined += `\n\n${await readPage(extra, state.abort)}`;
+        } catch (_) {
+          /* The page sources still work even if one extra page cannot be read. */
+        }
+      }
+      if (seq !== state.seq) return;
+
+      const detected = extractSources(combined);
+      state.detailMarkdown = detailMarkdown;
+      state.combinedMarkdown = combined;
+      state.info = parseInfo(detailMarkdown, state.currentTitle);
+      state.videos = extractVideos(combined);
+
+      const localSources = [];
+      if (state.videos.length) {
+        localSources.push({ url: state.videos[0].url, label: "Video only", type: "video" });
+      }
+      if (state.info) {
+        localSources.push({ url: state.currentUrl, label: "Info text", type: "info" });
+      }
+
+      const pageSources = [];
+      if (isWw8 && state.ww8Mid) {
+        pageSources.push({ url: state.currentUrl, label: "Movie player (in reader)", type: "player" });
+        pageSources.push({ url: state.currentUrl, label: "Movie player (Google tab)", type: "ww8", mode: "google" });
+      }
+      if (state.playerUrl) {
+        pageSources.push({ url: state.playerUrl, label: "Movie player", type: "iframe" });
+      }
+      pageSources.push({ url: state.currentUrl, label: "Info page", type: "iframe" });
+      if (state.trailerUrl) {
+        pageSources.push({ url: state.trailerUrl, label: "Trailer", type: "iframe" });
+      }
+
+      state.sources = [...localSources, ...pageSources, ...detected];
+      renderSources();
+
+      const parsedTitle = titleFromMarkdown(detailMarkdown, state.currentTitle);
+      const title = /^(watch|ver)\s/i.test(parsedTitle) && state.currentTitle
+        ? state.currentTitle
+        : parsedTitle;
+      const year = (detailMarkdown.match(/\[((?:19|20)\d{2})\]\(/i) || [])[1]
+        || (parsedTitle.match(/\(((?:19|20)\d{2})\)/) || [])[1]
+        || state.currentYear
+        || "";
+      state.currentTitle = title;
+      state.info.title = title;
+
+      els.movieTitle.textContent = title;
+      els.movieMeta.textContent = [state.currentSource || "Movie", year].filter(Boolean).join(" · ");
+      els.hudTitle.textContent = title;
+
+      if (state.info) renderInfo({ silent: true });
+      if (!silent) {
+        setStatus(`${state.sources.length} sources found. Info text shown — choose a player source to watch.`, "ok");
+      }
+    } catch (error) {
+      if (error?.name === "AbortError" || seq !== state.seq) return;
+      state.sources = [{
+        url: state.currentUrl,
+        label: "Open page",
+        type: "iframe"
+      }];
+      renderSources();
+      setStatus("Could not read sources; page view still works.", "warn");
+    }
+  }
+
+  async function openMovie(result) {
+    state.currentUrl = result.url;
+    state.currentTitle = result.name;
+    state.currentSource = result.source || "Movie";
+    state.currentYear = result.year || "";
+    state.archiveId = result.archiveId || archiveIdFromUrl(result.url);
+    state.ww8Mid = result.mid || extractMid(result.url);
+    state.ww8Server = result.server || "1";
+    state.ww8Episode = result.episode || "1";
+    els.results.querySelectorAll(".result").forEach(b => b.classList.remove("active"));
+    const picked = Array.from(els.results.querySelectorAll(".result")).find(b => Number(b.dataset.index) === window.__movieResults.indexOf(result));
+    picked?.classList.add("active");
+    renderSources();
+    await loadCurrentUrl();
+  }
+
+  async function openPastedUrl(raw) {
+    const url = normalizeUrl(raw);
+    if (!safeUrl(url)) {
+      setStatus("Enter a valid http(s) URL or a movie title.", "bad");
+      return;
+    }
+    let parsedUrl = null;
+    try { parsedUrl = new URL(safeUrl(url)); } catch (_) {}
+    if (isMediaUrl(url)) {
+      state.currentUrl = url;
+      state.currentTitle = state.currentTitle || "Direct video";
+      state.currentSource = "Direct video URL";
+      state.archiveId = "";
+      state.ww8Mid = "";
+      state.videos = [{ url, label: "Video file", type: "video" }];
+      state.sources = [{ url, label: "Video file", type: "video" }];
+      state.activeSource = 0;
+      state.info = null;
+      renderSources();
+      els.movieTitle.textContent = state.currentTitle;
+      els.movieMeta.textContent = state.currentSource;
+      playVideoUrl(url, "Video file", 0);
+      return;
+    }
+    state.currentUrl = url;
+    state.currentTitle = parsedUrl ? parsedUrl.hostname.replace(/^www\./, "") : "Movie";
+    state.currentSource = "Pasted URL";
+    state.currentYear = "";
+    state.archiveId = archiveIdFromUrl(url);
+    state.ww8Mid = extractMid(new URL(url).pathname);
+    state.ww8Server = "1";
+    state.ww8Episode = "1";
+    els.results.innerHTML = "";
+    window.__movieResults = [];
+    await loadCurrentUrl();
+  }
+
+  async function runSearch() {
+    const value = els.input.value.trim();
+    if (!value) {
+      setStatus("Type a title or paste a URL.", "warn");
+      els.input.focus();
+      return;
+    }
+
+    showPanel();
+    if (looksLikeUrl(value)) {
+      await openPastedUrl(value);
+      return;
+    }
+
+    state.abort?.abort();
+    state.abort = new AbortController();
+    const seq = ++state.seq;
+    const targets = searchTargets(value);
+    let lastError = null;
+
+    for (const target of targets) {
+      if (seq !== state.seq) return;
+      setStatus(`Searching ${target.label} for “${value}”…`, "warn");
+
+      try {
+        const markdown = await readPage(target.url, state.abort);
+        if (seq !== state.seq) return;
+
+        const results = target.key === "archive"
+          ? parseArchiveResults(markdown, target)
+          : target.key === "imdb"
+            ? parseImdbResults(markdown)
+            : target.key === "ww8Api"
+              ? parseWw8Results(markdown, target)
+              : parse123Results(markdown, target);
+
+        if (results.length) {
+          renderResults(results, value);
+          setStatus(`${results.length} movies found on ${target.label}. Pick one.`, "ok");
+          return;
+        }
+      } catch (error) {
+        if (error?.name === "AbortError" || seq !== state.seq) return;
+        lastError = error;
+      }
+    }
+
+    renderResults([], value);
+    setStatus(lastError ? "Search failed. Try another source or paste a URL." : "No movies found.", "bad");
+  }
+
+  els.panelTab.addEventListener("click", () => {
+    if (els.panel.classList.contains("is-open")) hidePanel();
+    else showPanel();
+  });
+
+  els.openBtn.addEventListener("click", () => { void runSearch(); });
+  els.input.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void runSearch();
+    }
+  });
+
+  els.results.addEventListener("click", event => {
+    const button = event.target.closest(".result");
+    if (!button) return;
+    const cachedResults = window.__movieResults || [];
+    const item = cachedResults[Number(button.dataset.index)];
+    if (item) void openMovie(item);
+  });
+
+  els.sources.addEventListener("click", event => {
+    const button = event.target.closest(".source");
+    if (button) playSource(Number(button.dataset.index));
+  });
+
+  els.videoOnlyBtn.addEventListener("click", showVideoOnly);
+  els.infoOnlyBtn.addEventListener("click", () => renderInfo());
+  els.refreshBtn.addEventListener("click", () => { void loadCurrentUrl(); });
+  els.clearBtn.addEventListener("click", hideStage);
+  els.pageBtn.addEventListener("click", openPage);
+  els.viewMode.addEventListener("change", saveSettings);
+  els.searchSource.addEventListener("change", saveSettings);
+  els.googleFallback.addEventListener("change", saveSettings);
+
+  els.helpBtn.addEventListener("click", showHelp);
+  els.helpCloseBtn.addEventListener("click", hideHelp);
+  els.helpGotItBtn.addEventListener("click", hideHelp);
+  els.quickHelpTab.addEventListener("click", () => setHelpMode("quick"));
+  els.advancedHelpTab.addEventListener("click", () => setHelpMode("advanced"));
+  els.quickStartBtn.addEventListener("click", () => {
+    hideHelp();
+    showPanel();
+    setTimeout(() => {
+      els.input.focus();
+      els.input.select?.();
+    }, 0);
+  });
+  els.helpOverlay.addEventListener("click", event => {
+    if (event.target === els.helpOverlay) hideHelp();
+  });
+
+  document.addEventListener("keydown", event => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || "");
+    if (event.key === "?" && !typing) {
+      event.preventDefault();
+      showHelp();
+    } else if (event.key === "/" && !typing) {
+      event.preventDefault();
+      showPanel();
+      els.input.focus();
+    } else if (event.key === " " && !typing && !els.stageWrap.hidden && !els.video.hidden) {
+      event.preventDefault();
+      if (els.video.paused) els.video.play().catch(() => {});
+      else els.video.pause();
+    }
+  });
+
+  els.video.addEventListener("error", () => {
+    if (!state.mediaFallback) {
+      setStatus("This video file could not be played here. Try another source or the Movie player tab.", "warn");
+    }
+  });
+  els.frame.addEventListener("load", () => {
+    if (!els.frame.hidden && els.frame.src && els.frame.src !== "about:blank") {
+      setStatus("Google Translate frame loaded. If it looks blank, use Google proxy new tab.", "ok");
+    }
+  });
+
+  window.__movieResults = [];
+
+  loadSettings();
+  setStatus("Ready");
+})();
+</script>
+</body>
+</html>
