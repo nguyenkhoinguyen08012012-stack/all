@@ -1511,6 +1511,7 @@
   const WEEB_ORIGIN = "https://weebcentral.com";
   const WEEB_PROXY = "https://proxy.corsfix.com/?";
   const LINK_READER = "https://r.jina.ai/";
+  const GOOGLE_TRANSLATE = "https://translate.google.com/translate?sl=auto&tl=en&u=";
   const LINK_TIMEOUT_MS = 20000;
   const WEEB_TIMEOUT_MS = 12000;
   const SEARCH_TIMEOUT_MS = 7000;
@@ -4295,7 +4296,23 @@
     }
   }
 
-  async function fetchCachedText(url, cacheKey, { controllerKey, timeoutMs, label, accept, headers = null }) {
+  function cacheLinkText(cacheKey, text) {
+    linkCache.set(cacheKey, { at: Date.now(), text });
+    while (linkCache.size > LINK_CACHE_LIMIT) {
+      linkCache.delete(linkCache.keys().next().value);
+    }
+  }
+
+  async function fetchCachedText(url, cacheKey, {
+    controllerKey,
+    timeoutMs,
+    label,
+    accept,
+    headers = null,
+    transform = null,
+    attempts = PROXY_RETRY_DELAYS.length + 1,
+    skipCooldown = false
+  }) {
     const cached = linkCache.get(cacheKey);
     if (cached) {
       if (Date.now() - cached.at <= LINK_CACHE_TTL) return cached.text;
@@ -4307,11 +4324,12 @@
     state[controllerKey] = controller;
 
     try {
-      for (let attempt = 0; attempt <= PROXY_RETRY_DELAYS.length; attempt += 1) {
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
         if (attempt > 0) await sleep(PROXY_RETRY_DELAYS[attempt - 1]);
 
-        /* If the proxy just rate-limited us, wait for the cooldown before trying again. */
-        const cooldown = proxyCooldownUntil - Date.now();
+        /* If the proxy just rate-limited us, wait for the cooldown before trying again.
+           The Google fallback skips this so it can run immediately. */
+        const cooldown = skipCooldown ? 0 : proxyCooldownUntil - Date.now();
         if (cooldown > 0) await sleep(cooldown);
         if (controller.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
@@ -4329,7 +4347,7 @@
             credentials: "omit",
             referrerPolicy: "no-referrer",
             headers: {
-              Accept: label === "WeebCentral proxy" ? "text/html" : "text/plain",
+              Accept: label === "WeebCentral proxy" || label === "Google reader" ? "text/html" : "text/plain",
               ...(headers || {})
             }
           });
@@ -4341,14 +4359,12 @@
             throw error;
           }
 
-          const text = await response.text();
+          let text = await response.text();
+          if (transform) text = transform(text);
           const invalid = accept(text);
           if (invalid) throw new Error(invalid);
 
-          linkCache.set(cacheKey, { at: Date.now(), text });
-          while (linkCache.size > LINK_CACHE_LIMIT) {
-            linkCache.delete(linkCache.keys().next().value);
-          }
+          cacheLinkText(cacheKey, text);
           return text;
         } catch (error) {
           if (timedOut) throw new Error(`${label} request timed out`);
@@ -4360,7 +4376,7 @@
             proxyCooldownUntil = Math.max(proxyCooldownUntil, Date.now() + wait);
           }
 
-          if (!error.retryable || attempt >= PROXY_RETRY_DELAYS.length) throw error;
+          if (!error.retryable || attempt >= attempts - 1) throw error;
         } finally {
           clearTimeout(timer);
         }
@@ -4384,33 +4400,93 @@
     }
   }
 
-  function readerFetch(targetUrl, controllerKey = "linkAbort", { timeoutMs = LINK_TIMEOUT_MS, links = true } = {}) {
+  function readerAccept(value) {
+    const text = String(value || "");
+    if (!text.trim() || text.length < 40) return "reader returned an empty page";
+
+    /* Jina answers 429 rate limits with HTTP 200 and a small JSON body. Without
+       this check the error gets cached as if it were a real page. */
+    if (/^\s*\{/.test(text) && /RateLimitTriggeredError|"code"\s*:\s*429|"retryAfter"/i.test(text.slice(0, 600))) {
+      const seconds = Number((text.match(/"retryAfter"\s*:\s*(\d+(?:\.\d+)?)/i) || [])[1]) || 3;
+      const error = new Error("reader rate limit reached");
+      error.status = 429;
+      error.retryable = true;
+      error.retryAfterMs = Math.ceil(seconds * 1000);
+      throw error;
+    }
+    if (/^\s*\{/.test(text) && /"error"|"message"\s*:/i.test(text.slice(0, 300))) {
+      return "reader returned an error response";
+    }
+    return "";
+  }
+
+  /* Google wraps the reader page in HTML with the markdown inside <pre>. */
+  function extractReaderPre(html) {
+    try {
+      const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+      const pre = doc.querySelector("pre");
+      return pre ? (pre.textContent || "") : "";
+    } catch {
+      const match = String(html || "").match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+      if (!match) return "";
+      const temp = document.createElement("textarea");
+      temp.innerHTML = match[1];
+      return temp.value;
+    }
+  }
+
+  function directReaderFetch(targetUrl, controllerKey, settings, attempts) {
     return fetchCachedText(`${LINK_READER}${targetUrl}`, `jina:${targetUrl}`, {
       controllerKey,
-      timeoutMs,
+      timeoutMs: settings.timeoutMs,
       label: "reader",
       /* Links summary keeps chapter ids and page image URLs that the plain markdown omits. */
-      headers: links ? { "X-With-Links-Summary": "true" } : null,
-      accept: (text) => {
-        const value = String(text || "");
-        if (!value.trim() || value.length < 40) return "reader returned an empty page";
+      headers: settings.links ? { "X-With-Links-Summary": "true" } : null,
+      accept: readerAccept,
+      attempts
+    });
+  }
 
-        /* Jina answers 429 rate limits with HTTP 200 and a small JSON body. Without
-           this check the error gets cached as if it were a real page. */
-        if (/^\s*\{/.test(value) && /RateLimitTriggeredError|"code"\s*:\s*429|"retryAfter"/i.test(value.slice(0, 600))) {
-          const seconds = Number((value.match(/"retryAfter"\s*:\s*(\d+(?:\.\d+)?)/i) || [])[1]) || 3;
-          const error = new Error("reader rate limit reached");
-          error.status = 429;
-          error.retryable = true;
-          error.retryAfterMs = Math.ceil(seconds * 1000);
+  function googleReaderFetch(targetUrl, controllerKey, settings) {
+    const wrapped = `${GOOGLE_TRANSLATE}${encodeURIComponent(`${LINK_READER}${targetUrl}`)}`;
+    return fetchCachedText(wrapped, `gjina:${targetUrl}`, {
+      controllerKey,
+      timeoutMs: settings.timeoutMs,
+      label: "Google reader",
+      /* Do not wait out the direct reader's rate-limit cooldown; this is the backup. */
+      skipCooldown: true,
+      attempts: 2,
+      transform: extractReaderPre,
+      accept: readerAccept
+    });
+  }
+
+  async function readerFetch(targetUrl, controllerKey = "linkAbort", options = {}) {
+    const settings = {
+      timeoutMs: options.timeoutMs || LINK_TIMEOUT_MS,
+      links: options.links !== false
+    };
+
+    try {
+      return await directReaderFetch(targetUrl, controllerKey, settings, 2);
+    } catch (error) {
+      if (error && error.name === "AbortError") throw error;
+
+      try {
+        const text = await googleReaderFetch(targetUrl, controllerKey, settings);
+        cacheLinkText(`jina:${targetUrl}`, text);
+        return text;
+      } catch (googleError) {
+        if (googleError && googleError.name === "AbortError") throw googleError;
+
+        /* Last resort: the original full retry chain for the direct reader route. */
+        try {
+          return await directReaderFetch(targetUrl, controllerKey, settings, PROXY_RETRY_DELAYS.length + 1);
+        } catch (_) {
           throw error;
         }
-        if (/^\s*\{/.test(value) && /"error"|"message"\s*:/i.test(value.slice(0, 300))) {
-          return "reader returned an error response";
-        }
-        return "";
       }
-    });
+    }
   }
 
   function weebFetch(targetUrl, controllerKey = "linkAbort", { timeoutMs = WEEB_TIMEOUT_MS } = {}) {
