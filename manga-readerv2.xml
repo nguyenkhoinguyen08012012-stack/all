@@ -472,6 +472,19 @@
     .actions { margin-top: 2px; }
     .actions button { min-height: 42px; }
 
+    #helpBtn {
+      background: linear-gradient(150deg, #fbbf24, #f59e0b);
+      border-color: #fcd34d;
+      color: #1f1300;
+      font-weight: 900;
+      box-shadow: 0 5px 16px rgba(245, 158, 11, .28);
+    }
+
+    #helpBtn:hover:not(:disabled) {
+      background: linear-gradient(150deg, #fcd34d, #fbbf24);
+      border-color: #fde68a;
+    }
+
     #copyPreviewBtn,
     #testBtn { border-color: var(--line); }
 
@@ -620,43 +633,6 @@
     .page-wrap img:focus-visible {
       outline: 3px solid var(--accent);
       outline-offset: 3px;
-    }
-
-    .page-badge {
-      position: absolute;
-      right: 10px;
-      bottom: 10px;
-      display: flex;
-      gap: 5px;
-      align-items: center;
-      padding: 5px 9px;
-      border-radius: 999px;
-      background: rgba(8, 8, 12, .78);
-      border: 1px solid rgba(255, 255, 255, .12);
-      color: #d8d8e4;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: .04em;
-      backdrop-filter: blur(8px);
-      pointer-events: none;
-    }
-
-    .page-badge .ch {
-      display: none;
-      color: #fbbf24;
-    }
-
-    /* Only spell out the chapter once several chapters share the screen. */
-    #pages.is-multi .page-badge .ch {
-      display: inline;
-      border-right: 1px solid rgba(255,255,255,.18);
-      padding-right: 5px;
-    }
-
-    .page-badge .src {
-      color: #67e8f9;
-      border-left: 1px solid rgba(255,255,255,.18);
-      padding-left: 5px;
     }
 
     .page-error {
@@ -1000,6 +976,27 @@
       min-width: 120px;
     }
 
+    .lightbox-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .lightbox-link {
+      display: block;
+      max-width: min(70vw, 760px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .lightbox-link:hover { text-decoration: underline; }
+
     .lightbox-actions {
       display: flex;
       align-items: center;
@@ -1101,6 +1098,7 @@
       .help-section h3 { font-size: 14px; }
       .help-section p { font-size: 13px; }
       .lightbox-bar { padding: 8px; }
+      .lightbox-link { max-width: calc(100vw - 24px); }
       .lightbox-actions { width: 100%; }
       .lightbox-actions button, .lightbox-actions a.btn { flex: 1 1 auto; font-size: 12px; padding: 8px; }
     }
@@ -1246,6 +1244,14 @@
               </select>
             </div>
             <div class="row">
+              <label for="imageLoadMode">Image loading</label>
+              <select id="imageLoadMode" title="Load page images as Blob URLs or direct URLs">
+                <option value="blob" selected>Blob — fetch first (default)</option>
+                <option value="direct">Direct — use image URL</option>
+              </select>
+              <span class="chapter-picker-hint">Blob downloads each page before showing it; falls back to Direct when blocked.</span>
+            </div>
+            <div class="row">
               <label for="imageProxyMode">Image proxy</label>
               <select id="imageProxyMode" title="Retry blocked images through a public image proxy">
                 <option value="auto" selected>Auto — direct, then proxy</option>
@@ -1339,7 +1345,10 @@
 
   <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Page preview" hidden>
     <div class="lightbox-bar">
-      <div id="lightboxCaption" class="lightbox-caption">Page</div>
+      <div class="lightbox-info">
+        <div id="lightboxCaption" class="lightbox-caption">Page</div>
+        <a id="lbLink" class="lightbox-link" href="#" target="_blank" rel="noopener noreferrer" title="Original image link"></a>
+      </div>
       <div class="lightbox-actions">
         <button id="lbPrev" type="button">← Prev</button>
         <button id="lbNext" type="button">Next →</button>
@@ -1430,6 +1439,7 @@
             <div><b>Latest scan</b><p>Maximum forward chapter range used by Latest Chapter.</p></div>
             <div><b>Missing chapters</b><p>Consecutive missing chapters allowed before the latest scan stops.</p></div>
             <div><b>Reader width</b><p>Maximum manga display width: Small, Normal, Large, or XL.</p></div>
+            <div><b>Image loading</b><p>Default “Blob” downloads each page image first and displays it from a temporary Blob URL. Choose “Direct” to use the image URL straight from the host. Blob falls back to Direct if the browser cannot fetch the image; the change applies to pages loaded afterwards.</p></div>
             <div><b>Image proxy</b><p>Auto tries the direct image URL first, then Google's image pipeline (G), then P1 (images.weserv.nl) and P2 (wsrv.nl) — no search is involved, the proxy just fetches the same image. Use “Proxy first” or “Proxy only” on networks that block the image host; “Off” disables it. Offline saves and downloads always keep the original URL.</p></div>
 
             <div><b>Load / Filter Pages</b><p>Starts a fresh load from the current URL pattern and clears the current page list before scanning.</p></div>
@@ -1440,11 +1450,12 @@
             <div><b>Load Next</b><p>Repeats the Next Chapter action and waits for each chapter to finish before continuing.</p></div>
             <div><b>Stop</b><p>Cancels the active link lookup, scan, or auto-load chain.</p></div>
             <div><b>Clear</b><p>Stops the active loading run and removes all displayed pages.</p></div>
+            <div><b>How to Use</b><p>The gold button in the menu opens this guide in Quick Start mode. Use the Advanced Guide tab for every setting and shortcut.</p></div>
             <div><b>Hide Panel</b><p>Hides the settings menu for clean reading.</p></div>
             <div><b>Menu tab</b><p>Opens the settings menu. On phones it is touch-safe and the menu can scroll.</p></div>
 
-            <div><b>Page badge</b><p>Shows the page code and which source supplied it (S1, S2, or G/P1/P2 for the image proxy).</p></div>
             <div><b>Click a page</b><p>Opens the lightbox. Use Prev/Next, Fit, +/−, Open original, or Download.</p></div>
+            <div><b>Image link</b><p>Shown at the top of the lightbox for the current page. Tap it to open that exact image URL in a new tab.</p></div>
             <div><b>Reading HUD</b><p>Shows the current chapter, loaded page count and your page position.</p></div>
             <div><b>Failed page card</b><p>Tries the backup source automatically. If every source fails, use Retry.</p></div>
 
@@ -1494,6 +1505,8 @@
     { name: "P2", prefix: "https://wsrv.nl/?url=" }
   ];
   const PROXY_MODES = new Set(["auto", "proxy-first", "proxy-only", "off"]);
+  const IMAGE_LOAD_MODES = new Set(["blob", "direct"]);
+  const IMAGE_FETCH_TIMEOUT_MS = 12000;
   /* Whole chapters are kept; storage pressure, not these numbers, decides eviction. */
   const OFFLINE_MAX_ITEMS = 20000;
   const OFFLINE_MAX_BYTES = 8 * 1024 * 1024 * 1024;
@@ -1504,7 +1517,7 @@
   const PROGRESS_MAX_PAGES = 300;
   const PROGRESS_MAX_GROUPS = 6;
   const PROGRESS_SAVE_DELAY = 700;
-  const SETTINGS_VERSION = 2;
+  const SETTINGS_VERSION = 3;
   const PAGE_CONCURRENCY = 6;
   const CHAPTER_CONCURRENCY = 4;
   const PROBE_TIMEOUT_MS = 8000;
@@ -1570,6 +1583,7 @@
     latestScanLimit: $("latestScanLimit"),
     latestMissLimit: $("latestMissLimit"),
     width: $("width"),
+    imageLoadMode: $("imageLoadMode"),
     imageProxyMode: $("imageProxyMode"),
     previewUrl: $("previewUrl"),
     copyPreviewBtn: $("copyPreviewBtn"),
@@ -1602,6 +1616,7 @@
     lightboxImg: $("lightboxImg"),
     lightboxCaption: $("lightboxCaption"),
     lightboxStage: $("lightboxStage"),
+    lbLink: $("lbLink"),
     lbPrev: $("lbPrev"),
     lbNext: $("lbNext"),
     lbZoomOut: $("lbZoomOut"),
@@ -1626,7 +1641,7 @@
   const SETTING_KEYS = [
     "base1", "base2", "chapterBox", "chapterPad", "separator", "pageBox",
     "pagePad", "suffix", "maxPages", "missLimit", "retryCount", "retryWait",
-    "latestScanLimit", "latestMissLimit", "width", "imageProxyMode", "link"
+    "latestScanLimit", "latestMissLimit", "width", "imageLoadMode", "imageProxyMode", "link"
   ];
 
   const NUMBER_LIMITS = {
@@ -1659,6 +1674,7 @@
       latestScanLimit: "300",
       latestMissLimit: "10",
       width: "920",
+      imageLoadMode: "blob",
       imageProxyMode: "auto",
       link: ""
     }
@@ -1680,6 +1696,7 @@
     latestScanLimit: "300",
     latestMissLimit: "10",
     width: "920",
+    imageLoadMode: "blob",
     imageProxyMode: "auto",
     link: ""
   };
@@ -1753,6 +1770,7 @@
     }
 
     if (!WIDTHS.has(group.width)) group.width = "920";
+    if (!IMAGE_LOAD_MODES.has(group.imageLoadMode)) group.imageLoadMode = "blob";
     if (!PROXY_MODES.has(group.imageProxyMode)) group.imageProxyMode = "auto";
     if (parseInt(group.maxPages, 10) < 60) group.maxPages = "60";
     group.chapterBox = group.chapterBox.trim() || "1";
@@ -3923,7 +3941,7 @@
     if (saved.codes[saved.index]) els.pageBox.value = saved.codes[saved.index];
     updatePreview();
 
-    els.pages.replaceChildren();
+    clearPagesNode();
     saved.pages.forEach((url, i) => {
       addPage(
         { url, sourceIndex: 1 },
@@ -5092,6 +5110,85 @@
     return PROXY_MODES.has(els.imageProxyMode?.value) ? els.imageProxyMode.value : "auto";
   }
 
+  function imageLoadMode() {
+    return IMAGE_LOAD_MODES.has(els.imageLoadMode?.value) ? els.imageLoadMode.value : "blob";
+  }
+
+  function releaseImageBlob(img) {
+    const objectUrl = img?._blobObjectUrl;
+    if (!objectUrl) return;
+    img._blobObjectUrl = "";
+    try {
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      /* The browser may already have released it. */
+    }
+  }
+
+  /* Fetch the chosen candidate into a Blob URL by default. A failed or blocked
+     fetch falls back to the ordinary image URL so the retry chain still works. */
+  async function setImageSource(img, url) {
+    if (!img || !url) return false;
+
+    const seq = (img._loadSeq = (img._loadSeq || 0) + 1);
+    const wrap = img.closest(".page-wrap");
+    if (wrap) wrap.dataset.loadStarted = String(Date.now());
+    delete img.dataset.offline;
+
+    if (imageLoadMode() !== "blob") {
+      delete img.dataset.blobPending;
+      releaseImageBlob(img);
+      delete img.dataset.blob;
+      img.src = url;
+      return false;
+    }
+
+    img.dataset.blobPending = "1";
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(url, {
+        mode: "cors",
+        credentials: "omit",
+        cache: "force-cache",
+        referrerPolicy: "no-referrer",
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`Image fetch failed: ${response.status}`);
+
+      const blob = await response.blob();
+      if (!blob || !blob.size) throw new Error("Image fetch returned an empty file");
+      if (seq !== img._loadSeq || !img.isConnected) return false;
+
+      const objectUrl = URL.createObjectURL(blob);
+      releaseImageBlob(img);
+      img._blobObjectUrl = objectUrl;
+      delete img.dataset.blobPending;
+      img.dataset.blob = "1";
+      img.src = objectUrl;
+      return true;
+    } catch {
+      if (seq !== img._loadSeq || !img.isConnected) return false;
+      releaseImageBlob(img);
+      delete img.dataset.blobPending;
+      delete img.dataset.blob;
+      img.src = url;
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /* Revoke temporary Blob URLs before a page list is replaced. */
+  function clearPagesNode(...nodes) {
+    for (const img of els.pages.querySelectorAll("img")) {
+      img._loadSeq = (img._loadSeq || 0) + 1;
+      releaseImageBlob(img);
+    }
+    els.pages.replaceChildren(...nodes);
+  }
+
   /* Ordered URLs to try for one image. `originalUrl` is always the source URL,
      so offline saves, the lightbox and downloads never see the proxy address. */
   function imageVariants(sourceUrl) {
@@ -5185,7 +5282,7 @@
     const pad = els.pagePad.value;
     const chapterValue = els.chapterBox.value || "1";
 
-    if (clearExisting) els.pages.replaceChildren();
+    if (clearExisting) clearPagesNode();
     else els.pages.querySelector(".empty")?.remove();
 
     meta.pages.forEach((page, index) => {
@@ -6599,7 +6696,7 @@
     const loadedPages = [];
 
     if (clearExisting) {
-      els.pages.replaceChildren();
+      clearPagesNode();
       updateHud();
     } else {
       els.pages.querySelector(".empty")?.remove();
@@ -7228,13 +7325,13 @@
       box.appendChild(wrap);
     }
 
-    els.pages.replaceChildren(box);
+    clearPagesNode(box);
     updateHud();
   }
 
   function clearReader() {
     stopLoading("", "");
-    els.pages.replaceChildren();
+    clearPagesNode();
     clearProgress();
     showEmptyMessage(
       "Cleared.",
@@ -7311,24 +7408,6 @@
     img.referrerPolicy = "no-referrer";
     img.alt = `Chapter ${chapterCode(chapter)} page ${pageCode}`;
 
-    const badge = document.createElement("div");
-    badge.className = "page-badge";
-
-    const chapterLabel = document.createElement("span");
-    chapterLabel.className = "ch";
-    chapterLabel.textContent = chapterCode(chapter);
-
-    const pageLabel = document.createElement("span");
-    pageLabel.textContent = `P ${pageCode}`;
-
-    const sourceLabel = document.createElement("span");
-    sourceLabel.className = "src";
-    sourceLabel.textContent = probeResult.isProxy
-      ? (probeResult.proxyName || "PX")
-      : `S${probeResult.sourceIndex}`;
-
-    badge.append(chapterLabel, pageLabel, sourceLabel);
-
     const candidates = [];
     function addCandidate(candidate) {
       const url = safeImageUrl(candidate?.url || "");
@@ -7395,9 +7474,7 @@
       candidateIndex = candidates.length;
       currentUrl = url;
       img.dataset.remote = url;
-      sourceLabel.textContent = "S1";
-      img.src = url;
-      wrap.dataset.loadStarted = String(Date.now());
+      void setImageSource(img, url);
       return true;
     }
 
@@ -7453,11 +7530,7 @@
       const candidate = candidates[candidateIndex++];
       currentUrl = candidate.originalUrl || candidate.url;
       img.dataset.remote = currentUrl;
-      sourceLabel.textContent = candidate.isProxy
-        ? (candidate.proxyName || "PX")
-        : `S${candidate.sourceIndex || 1}`;
-      img.src = candidate.url;
-      wrap.dataset.loadStarted = String(Date.now());
+      void setImageSource(img, candidate.url);
     }
 
     async function tryOfflineCopy(url = currentUrl) {
@@ -7467,6 +7540,10 @@
       const objectUrl = await readOfflineImage(url);
       if (!objectUrl) return false;
 
+      img._loadSeq = (img._loadSeq || 0) + 1;
+      releaseImageBlob(img);
+      delete img.dataset.blobPending;
+      delete img.dataset.blob;
       img.dataset.offline = "1";
       img.src = objectUrl;
       return true;
@@ -7508,7 +7585,7 @@
       }
     });
 
-    wrap.append(img, badge);
+    wrap.appendChild(img);
     els.pages.appendChild(wrap);
 
     /* If offline, try the saved original immediately. If it is not saved,
@@ -7586,7 +7663,6 @@
     if (!wrap.isConnected) return;
 
     const img = wrap.querySelector("img");
-    const badgeSource = wrap.querySelector(".page-badge .src");
     if (!img) return;
 
     wrap.classList.remove("is-error");
@@ -7620,17 +7696,10 @@
 
     for (const item of urls) {
       if (!wrap.isConnected) return;
-      if (badgeSource) {
-        badgeSource.textContent = item.isProxy
-          ? (item.proxyName || "PX")
-          : `S${item.sourceIndex}`;
-      }
       const ok = await probeImage(item.url, null, PROBE_TIMEOUT_MS, false);
       if (ok) {
         img.dataset.remote = item.originalUrl;
-        delete img.dataset.offline;
-        img.src = item.url;
-        wrap.dataset.loadStarted = String(Date.now());
+        void setImageSource(img, item.url);
         setStatus(
           item.isProxy
             ? `Page ${pageCode} loaded through ${item.proxyName || "image proxy"}.`
@@ -7649,10 +7718,6 @@
   function updateHud() {
     const wraps = els.pages.querySelectorAll(".page-wrap");
     els.bottomChapterNav.hidden = wraps.length === 0;
-
-    /* Appended chapters keep their own page badges; show the label only when they mix. */
-    const chapterCount = new Set([...wraps].map((wrap) => wrap.dataset.chapter)).size;
-    els.pages.classList.toggle("is-multi", chapterCount > 1);
 
     if (!wraps.length) {
       els.readingHud.hidden = true;
@@ -7718,6 +7783,11 @@
       const img = wrap?.querySelector("img");
       if (!img || img.dataset.offline === "1" || img.naturalWidth > 0) continue;
 
+      /* A Blob fetch has not assigned a src yet, so the empty image must not
+         be mistaken for a broken page while the fetch is still allowed to run. */
+      if (img.dataset.blobPending === "1" &&
+          (now - (Number(wrap.dataset.loadStarted) || 0)) <= IMAGE_FETCH_TIMEOUT_MS + LOOKAHEAD_STALE_MS) continue;
+
       const failed = wrap.classList.contains("is-error") || (img.complete && img.naturalWidth === 0);
       const stale = !img.complete &&
         (now - (Number(wrap.dataset.loadStarted) || 0)) > LOOKAHEAD_STALE_MS;
@@ -7780,6 +7850,7 @@
     const image = images[state.lightboxIndex];
     const wrap = image.closest(".page-wrap");
     const source = image.currentSrc || image.src;
+    const imageLink = image.dataset.remote || source;
     const chapter = wrap?.dataset.chapter || els.chapterBox.value;
     const page = wrap?.dataset.page || "?";
 
@@ -7787,7 +7858,10 @@
     els.lightboxImg.alt = image.alt;
     els.lightboxCaption.textContent =
       `Chapter ${chapterCode(chapter)} · Page ${page} · ${state.lightboxIndex + 1}/${images.length}`;
-    els.lbOpen.href = source;
+    els.lbLink.href = imageLink;
+    els.lbLink.textContent = imageLink;
+    els.lbLink.title = imageLink;
+    els.lbOpen.href = imageLink;
     els.lbDownload.href = source;
     els.lbPrev.disabled = state.lightboxIndex === 0;
     els.lbNext.disabled = state.lightboxIndex === images.length - 1;
@@ -7800,6 +7874,8 @@
 
     els.lightbox.hidden = true;
     els.lightboxImg.removeAttribute("src");
+    els.lbLink.removeAttribute("href");
+    els.lbLink.textContent = "";
     document.body.classList.remove("lightbox-open");
     state.lightboxIndex = -1;
     state.lastFocus?.focus?.();
@@ -8116,6 +8192,16 @@
   els.width.addEventListener("change", () => {
     applyReaderWidth();
     handleSettingChange();
+  });
+
+  els.imageLoadMode.addEventListener("change", () => {
+    setStatus(
+      imageLoadMode() === "blob"
+        ? "New pages will load as Blob URLs. Reload the chapter to apply this to current pages."
+        : "New pages will use direct image URLs. Reload the chapter to apply this to current pages.",
+      "status-ok",
+      3600
+    );
   });
 
   /* reader actions */
