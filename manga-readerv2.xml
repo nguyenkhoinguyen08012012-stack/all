@@ -1442,6 +1442,7 @@
             <div><b>Reader width</b><p>Maximum manga display width: Small, Normal, Large, or XL.</p></div>
             <div><b>Image loading</b><p>Default “Blob” downloads each page image first and displays it from a temporary Blob URL. Choose “Direct” to use the image URL straight from the host. Blob falls back to Direct if the browser cannot fetch the image; the change applies to pages loaded afterwards.</p></div>
             <div><b>Blob all pages</b><p>Sets image loading to Blob and converts every displayed page to a Blob URL. It also runs automatically for new chapters while Blob mode is selected.</p></div>
+            <div><b>Resume</b><p>Only the chapter number and page number are saved. Reopening the reader reloads that chapter and returns to that page.</p></div>
             <div><b>Image proxy</b><p>Auto tries the direct image URL first, then Google's image pipeline (G), then P1 (images.weserv.nl) and P2 (wsrv.nl) — no search is involved, the proxy just fetches the same image. Use “Proxy first” or “Proxy only” on networks that block the image host; “Off” disables it. Offline saves and downloads always keep the original URL.</p></div>
 
             <div><b>Load / Filter Pages</b><p>Starts a fresh load from the current URL pattern and clears the current page list before scanning.</p></div>
@@ -1833,7 +1834,7 @@
     }
   }
 
-  /* ---------- reading progress (chapter, loaded pages, position) ---------- */
+  /* ---------- reading progress (chapter number, page number, position) ---------- */
 
   function readProgressMap() {
     try {
@@ -3660,42 +3661,26 @@
   function sanitizeProgress(raw) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
 
-    const rawPages = Array.isArray(raw.pages) ? raw.pages : [];
-    const rawCodes = Array.isArray(raw.codes) ? raw.codes : [];
-    const rawChapters = Array.isArray(raw.chapters) ? raw.chapters : null;
     const chapter = cleanText(raw.chapter, 40);
+    if (!chapter) return null;
 
-    /* Keep pages, codes and chapter labels aligned before trimming. */
-    const rows = [];
-    rawPages.forEach((url, i) => {
-      if (typeof url !== "string" || !/^https?:\/\//i.test(url)) return;
-      rows.push({ url, code: cleanText(rawCodes[i], 16), chapter: cleanText(rawChapters?.[i], 40) });
-    });
-    if (!rows.length) return null;
-
-    /* Overflow keeps the newest pages (reading moves forward), not the oldest. */
-    const dropped = Math.max(0, rows.length - PROGRESS_MAX_PAGES);
-    const kept = rows.slice(dropped);
-
-    const pages = kept.map((row) => row.url);
-    const codes = kept.map((row) => row.code);
-    const chapters = rawChapters
-      ? kept.map((row) => row.chapter)
-      : inferPageChapters(rows.map((row) => row.url), rows.map((row) => row.code), chapter).slice(dropped);
-
-    const index = Math.max(0, Math.min(pages.length - 1, (parseInt(raw.index, 10) || 0) - dropped));
+    /* Old entries stored every page URL. New entries store only the chapter and
+       the page number/code; both resume by reloading the chapter. */
+    const rawCodes = Array.isArray(raw.codes) ? raw.codes : [];
+    const oldIndex = Math.max(0, parseInt(raw.index, 10) || 0);
+    const code = cleanText(raw.pageCode || raw.pageBox || rawCodes[oldIndex], 16);
+    const numeric = parseInt(code, 10);
+    const page = Math.max(1, parseInt(raw.page, 10) || (Number.isFinite(numeric) ? numeric : oldIndex + 1));
 
     return {
       group: cleanText(raw.group, 80),
       chapter,
       label: cleanText(raw.label, 40),
-      chapters,
       seriesUrl: /^https?:\/\//i.test(raw.seriesUrl || "") ? cleanText(raw.seriesUrl, 500) : "",
       seriesName: cleanText(raw.seriesName, 90),
       chapterUrl: /^https?:\/\//i.test(raw.chapterUrl || "") ? cleanText(raw.chapterUrl, 500) : "",
-      index,
-      pages,
-      codes,
+      page,
+      pageCode: code || String(page),
       at: Number(raw.at) || 0
     };
   }
@@ -3723,53 +3708,40 @@
     const wraps = [...els.pages.querySelectorAll(".page-wrap")];
     if (!wraps.length) return null;
 
-    const pages = [];
-    const codes = [];
-    const chapters = [];
-
-    wraps.forEach((wrap) => {
-      const img = wrap.querySelector("img");
-      /* Offline pages use a blob: src; the remote URL is the one worth saving. */
-      const remote = img?.dataset.remote || "";
-      const source = img?.getAttribute("src") || "";
-      const url = /^https?:\/\//i.test(remote) ? remote : (/^https?:\/\//i.test(source) ? source : "");
-      if (!url) return;
-      pages.push(url);
-      codes.push(wrap.dataset.page || "");
-      /* An appended chapter mixed into the view keeps its own label. */
-      chapters.push(wrap.dataset.chapter || "");
-    });
-
-    if (!pages.length) return null;
+    /* Resume data is intentionally tiny: no page URLs, just where to reload. */
+    const index = Math.min(currentPageIndex(wraps), wraps.length - 1);
+    const code = cleanText(wraps[index]?.dataset.page || els.pageBox.value.trim(), 16);
+    const numeric = parseInt(code, 10);
+    const page = Number.isFinite(numeric) ? numeric : index + 1;
 
     return {
       group: state.activeGroup,
-      chapter: els.chapterBox.value,
+      chapter: els.chapterBox.value.trim() || "1",
       label: chapterCode(),
-      chapters,
       seriesUrl: state.link?.seriesUrl || "",
       seriesName: state.link?.seriesName || "",
       chapterUrl: state.link?.chapterUrl || "",
-      index: Math.min(currentPageIndex(wraps), pages.length - 1),
-      pages,
-      codes,
+      page,
+      pageCode: code || padNumberString(String(page), els.pagePad.value),
       at: Date.now()
     };
+  }
+
+  function progressSignature(data) {
+    return [
+      data.group,
+      data.chapter,
+      data.page,
+      data.pageCode,
+      data.chapterUrl
+    ].join("|");
   }
 
   function saveProgress(force = false) {
     const data = captureProgress();
     if (!data) return;
 
-    const sig = [
-      data.group,
-      data.chapter,
-      data.index,
-      data.pages.length,
-      data.pages[0],
-      data.chapters[0],
-      data.chapters[data.chapters.length - 1]
-    ].join("|");
+    const sig = progressSignature(data);
     if (!force && sig === state.progressSig) return;
     state.progressSig = sig;
 
@@ -3941,27 +3913,13 @@
     if (!saved) return false;
 
     els.chapterBox.value = saved.chapter || els.chapterBox.value;
-    if (saved.codes[saved.index]) els.pageBox.value = saved.codes[saved.index];
+    els.pageBox.value = saved.pageCode || String(saved.page);
     updatePreview();
-
     clearPagesNode();
-    saved.pages.forEach((url, i) => {
-      addPage(
-        { url, sourceIndex: 1 },
-        {
-          chapter: saved.chapters?.[i] || saved.chapter || "1",
-          pageCode: saved.codes[i] || padNumberString(String(i + 1), els.pagePad.value),
-          exact: true
-        }
-      );
-    });
-
     updateHud();
-    scrollToRestoredPage(saved);
-    queueChapterOfflinePages();
 
-    /* Rebuild the chapter picker for the same series, so it is there after a restart.
-       The cached copy renders immediately; the network only refreshes it. */
+    /* Rebuild the chapter picker before loading, so the resumed chapter keeps
+       its series link. The cached copy renders now; the network only refreshes it. */
     const chapterNumber = parseFloat(saved.chapter);
     const cached = cachedSeriesFor(saved);
 
@@ -3975,8 +3933,8 @@
         chapters,
         fullList: cached.entry.fullList === true,
         chapterIndex: index,
-        chapterUrl: index >= 0 ? chapters[index].url || "" : "",
-        chapterLabel: index >= 0 ? chapters[index].label || "" : saved.label || "",
+        chapterUrl: (index >= 0 ? chapters[index].url : "") || saved.chapterUrl,
+        chapterLabel: (index >= 0 ? chapters[index].label : "") || saved.label || "",
         chapterNumber: index >= 0 ? chapters[index].number : (Number.isFinite(chapterNumber) ? chapterNumber : null)
       };
 
@@ -3993,7 +3951,7 @@
         chapters: [],
         fullList: false,
         chapterIndex: -1,
-        chapterUrl: "",
+        chapterUrl: saved.chapterUrl,
         chapterLabel: saved.label || "",
         chapterNumber: Number.isFinite(chapterNumber) ? chapterNumber : null
       };
@@ -4004,20 +3962,24 @@
 
     if (!state.link) restoreLastSeriesPicker(saved);
 
-    const sigChapters = Array.isArray(saved.chapters) ? saved.chapters : [];
-    state.progressSig = [
-      saved.group,
-      saved.chapter,
-      saved.index,
-      saved.pages.length,
-      saved.pages[0],
-      sigChapters[0],
-      sigChapters[sigChapters.length - 1]
-    ].join("|");
+    state.progressSig = progressSignature({
+      group: saved.group,
+      chapter: saved.chapter,
+      page: saved.page,
+      pageCode: saved.pageCode,
+      chapterUrl: saved.chapterUrl
+    });
 
     const label = saved.label || chapterCode(saved.chapter);
-    const page = saved.codes[saved.index] || saved.index + 1;
-    setStatus(`Resumed chapter ${label} — page ${page}.`, "status-ok", 5200);
+    /* Reload the chapter instead of restoring a saved list of page URLs. */
+    void loadPages(true, { quiet: true, fast: true }).then(() => {
+      const wraps = [...els.pages.querySelectorAll(".page-wrap")];
+      if (!wraps.length) return;
+      const index = Math.max(0, wraps.findIndex((wrap) => (wrap.dataset.page || "") === saved.pageCode));
+      scrollToRestoredPage({ index });
+      setStatus(`Resumed chapter ${label} — page ${saved.page}.`, "status-ok", 5200);
+    }).catch(() => {});
+
     return true;
   }
 
@@ -8137,7 +8099,7 @@
       /* Persistence is a hint; file:// and private windows can refuse it. */
     }
 
-    /* Reopen the last chapter and jump back to the page that was on screen.
+    /* Reopen the last chapter and reload it at the saved page.
        If that progress is gone, still bring back the chapter picker for the last series. */
     if (!restoreSession()) restoreLastSeriesPicker();
   }
