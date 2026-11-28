@@ -1165,6 +1165,7 @@
           <input id="autoNextCount" class="tiny" type="number" min="1" max="100" value="5" aria-label="Chapters to auto load">
         </label>
         <button id="autoNextBtn" class="good" type="button">Load Next</button>
+        <button id="blobAllBtn" class="good" type="button">Blob all pages</button>
         <button id="stopBtn" type="button" disabled>Stop</button>
         <button id="helpBtn" type="button">How to Use</button>
         <button id="clearBtn" type="button">Clear</button>
@@ -1440,6 +1441,7 @@
             <div><b>Missing chapters</b><p>Consecutive missing chapters allowed before the latest scan stops.</p></div>
             <div><b>Reader width</b><p>Maximum manga display width: Small, Normal, Large, or XL.</p></div>
             <div><b>Image loading</b><p>Default “Blob” downloads each page image first and displays it from a temporary Blob URL. Choose “Direct” to use the image URL straight from the host. Blob falls back to Direct if the browser cannot fetch the image; the change applies to pages loaded afterwards.</p></div>
+            <div><b>Blob all pages</b><p>Sets image loading to Blob and converts every displayed page to a Blob URL. It also runs automatically for new chapters while Blob mode is selected.</p></div>
             <div><b>Image proxy</b><p>Auto tries the direct image URL first, then Google's image pipeline (G), then P1 (images.weserv.nl) and P2 (wsrv.nl) — no search is involved, the proxy just fetches the same image. Use “Proxy first” or “Proxy only” on networks that block the image host; “Off” disables it. Offline saves and downloads always keep the original URL.</p></div>
 
             <div><b>Load / Filter Pages</b><p>Starts a fresh load from the current URL pattern and clears the current page list before scanning.</p></div>
@@ -1594,6 +1596,7 @@
     nextChapterBtn: $("nextChapterBtn"),
     autoNextCount: $("autoNextCount"),
     autoNextBtn: $("autoNextBtn"),
+    blobAllBtn: $("blobAllBtn"),
     stopBtn: $("stopBtn"),
     clearBtn: $("clearBtn"),
     hidePanelBtn: $("hidePanelBtn"),
@@ -5189,6 +5192,33 @@
     els.pages.replaceChildren(...nodes);
   }
 
+  /* Re-fetch every displayed page as a Blob URL. Blob mode is also the default,
+     so this doubles as the automatic cleanup for pages loaded directly. */
+  async function blobAllPages(quiet = false) {
+    els.imageLoadMode.value = "blob";
+    scheduleSave();
+
+    const images = [...els.pages.querySelectorAll(".page-wrap img")];
+    let converted = 0;
+    for (const img of images) {
+      if (!img.isConnected || img.dataset.blobPending === "1") continue;
+      if (img.dataset.blob === "1" && img._blobObjectUrl && img.src === img._blobObjectUrl) continue;
+      const url = img.dataset.remote || img.currentSrc || img.src;
+      if (!url || /^(blob:|data:)/i.test(url)) continue;
+      if (await setImageSource(img, url)) converted += 1;
+    }
+
+    if (!quiet) {
+      setStatus(
+        converted
+          ? `Blobbed ${converted} page${converted === 1 ? "" : "s"}.`
+          : "All displayed pages are already Blob URLs.",
+        "status-ok"
+      );
+    }
+    return converted;
+  }
+
   /* Ordered URLs to try for one image. `originalUrl` is always the source URL,
      so offline saves, the lightbox and downloads never see the proxy address. */
   function imageVariants(sourceUrl) {
@@ -7042,6 +7072,9 @@
         /* Keep this chapter readable after a restart without Wi-Fi. */
         queueChapterOfflinePages();
 
+        /* Blob is the default image mode; clean up any page that fell back to direct. */
+        if (imageLoadMode() === "blob") void blobAllPages(true);
+
         if (clearExisting) {
           window.scrollTo({ top: 0, behavior: "smooth" });
         }
@@ -8210,6 +8243,7 @@
   els.prevChapterBtn.addEventListener("click", prevChapter);
   els.nextChapterBtn.addEventListener("click", () => void nextChapter());
   els.autoNextBtn.addEventListener("click", () => void autoLoadNext());
+  els.blobAllBtn.addEventListener("click", () => void blobAllPages());
   els.stopBtn.addEventListener("click", () => stopLoading("Stopped."));
   els.clearBtn.addEventListener("click", clearReader);
   els.bottomPrevChapterBtn.addEventListener("click", prevChapter);
